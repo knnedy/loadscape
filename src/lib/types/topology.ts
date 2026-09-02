@@ -5,7 +5,9 @@ export type NodeCategory =
   | "database"
   | "cache"
   | "messaging"
-  | "auth";
+  | "auth"
+  | "storage"
+  | "search";
 
 export interface TopologyNodeData {
   componentId: string;
