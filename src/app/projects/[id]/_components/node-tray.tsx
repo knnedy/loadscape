@@ -6,8 +6,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { categories, componentsByCategory } from "@/lib/catalog/components";
+import { useTopologyStore } from "../_store/topology-provider";
 
 export function NodeTray() {
+  const addComponent = useTopologyStore((s) => s.addComponent);
+
   return (
     <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border bg-card py-3">
       {categories.map(({ category, label, icon: Icon }) => (
@@ -24,6 +27,7 @@ export function NodeTray() {
             {componentsByCategory(category).map((component) => (
               <button
                 key={component.id}
+                onClick={() => addComponent(component)}
                 className="w-full rounded-sm px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
                 {component.label}
               </button>
