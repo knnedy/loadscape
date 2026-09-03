@@ -16,10 +16,13 @@ import type { ComponentDef } from "@/lib/catalog/components";
 export interface TopologyState {
   nodes: Node<TopologyNodeData>[];
   edges: Edge[];
+  selectedNodeId: string | null;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
   addComponent: (component: ComponentDef) => void;
+  selectNode: (id: string | null) => void;
+  updateNodeCapacity: (id: string, capacity: number) => void;
 }
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
@@ -30,6 +33,7 @@ export function createTopologyStore() {
   return createStore<TopologyState>((set, get) => ({
     nodes: fixtureNodes,
     edges: fixtureEdges,
+    selectedNodeId: null,
     onNodesChange: (changes) =>
       set({ nodes: applyNodeChanges(changes, get().nodes) }),
     onEdgesChange: (changes) =>
@@ -53,5 +57,12 @@ export function createTopologyStore() {
       };
       set({ nodes: [...get().nodes, newNode] });
     },
+    selectNode: (id) => set({ selectedNodeId: id }),
+    updateNodeCapacity: (id, capacity) =>
+      set({
+        nodes: get().nodes.map((node) =>
+          node.id === id ? { ...node, data: { ...node.data, capacity } } : node,
+        ),
+      }),
   }));
 }
