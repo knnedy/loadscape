@@ -53,7 +53,7 @@ export function createTopologyStore() {
           label: component.label,
           category: component.category,
         },
-        type: "default",
+        type: "component",
       };
       set({ nodes: [...get().nodes, newNode] });
     },
