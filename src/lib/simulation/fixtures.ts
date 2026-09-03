@@ -6,7 +6,7 @@ export const fixtureNodes: Node<TopologyNodeData>[] = [
     id: "client",
     position: { x: 40, y: 160 },
     data: { componentId: "client", label: "Client", category: "client" },
-    type: "default",
+    type: "component",
   },
   {
     id: "lb",
@@ -16,7 +16,7 @@ export const fixtureNodes: Node<TopologyNodeData>[] = [
       label: "Load Balancer",
       category: "networking",
     },
-    type: "default",
+    type: "component",
   },
   {
     id: "api",
@@ -26,7 +26,7 @@ export const fixtureNodes: Node<TopologyNodeData>[] = [
       label: "API Server",
       category: "compute",
     },
-    type: "default",
+    type: "component",
   },
   {
     id: "db",
@@ -36,7 +36,7 @@ export const fixtureNodes: Node<TopologyNodeData>[] = [
       label: "PostgreSQL",
       category: "database",
     },
-    type: "default",
+    type: "component",
   },
 ];
 
