@@ -10,6 +10,7 @@ export function Canvas() {
   const onNodesChange = useTopologyStore((s) => s.onNodesChange);
   const onEdgesChange = useTopologyStore((s) => s.onEdgesChange);
   const onConnect = useTopologyStore((s) => s.onConnect);
+  const selectNode = useTopologyStore((s) => s.selectNode);
 
   return (
     <div className="h-full w-full bg-background">
@@ -19,6 +20,8 @@ export function Canvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={(_, node) => selectNode(node.id)}
+        onPaneClick={() => selectNode(null)}
         fitView>
         <Background
           variant={BackgroundVariant.Dots}
