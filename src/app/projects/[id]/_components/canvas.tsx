@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import ReactFlow, { Background, BackgroundVariant, Controls } from "reactflow";
 import "reactflow/dist/style.css";
+import { ComponentNode } from "@/components/nodes/component-node";
 import { useTopologyStore } from "../_store/topology-provider";
 
 export function Canvas() {
@@ -12,11 +14,14 @@ export function Canvas() {
   const onConnect = useTopologyStore((s) => s.onConnect);
   const selectNode = useTopologyStore((s) => s.selectNode);
 
+  const nodeTypes = useMemo(() => ({ component: ComponentNode }), []);
+
   return (
     <div className="h-full w-full bg-background">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
