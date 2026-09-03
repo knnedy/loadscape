@@ -11,7 +11,7 @@ import {
 const TopologyStoreContext = createContext<TopologyStore | null>(null);
 
 export function TopologyProvider({ children }: { children: ReactNode }) {
-  const storeRef = useRef<TopologyStore>();
+  const storeRef = useRef<TopologyStore | null>(null);
   if (!storeRef.current) {
     storeRef.current = createTopologyStore();
   }
