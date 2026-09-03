@@ -1,6 +1,7 @@
 import { TopBar } from "./top-bar";
 import { NodeTray } from "./node-tray";
 import { Canvas } from "./canvas";
+import { ConfigPanel } from "./config-panel";
 import { TopologyProvider } from "../_store/topology-provider";
 
 export function WorkspaceShell({ projectName }: { projectName: string }) {
@@ -13,6 +14,7 @@ export function WorkspaceShell({ projectName }: { projectName: string }) {
           <main className="flex-1 overflow-hidden">
             <Canvas />
           </main>
+          <ConfigPanel />
         </div>
       </div>
     </TopologyProvider>
