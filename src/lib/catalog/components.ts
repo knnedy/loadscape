@@ -64,7 +64,6 @@ export const componentCatalog: ComponentDef[] = [
     category: "client",
     icon: Users,
   },
-
   {
     id: "load-balancer",
     label: "Load Balancer",
@@ -84,7 +83,6 @@ export const componentCatalog: ComponentDef[] = [
     category: "networking",
     icon: SiNginx,
   },
-
   { id: "api-server", label: "API Server", category: "compute", icon: Server },
   {
     id: "serverless-function",
@@ -104,7 +102,6 @@ export const componentCatalog: ComponentDef[] = [
     category: "compute",
     icon: Cog,
   },
-
   {
     id: "postgresql",
     label: "PostgreSQL",
@@ -120,10 +117,8 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     icon: SiApachecassandra,
   },
-
   { id: "redis", label: "Redis", category: "cache", icon: SiRedis },
   { id: "memcached", label: "Memcached", category: "cache", icon: Database },
-
   { id: "kafka", label: "Kafka", category: "messaging", icon: SiApachekafka },
   {
     id: "rabbitmq",
@@ -138,7 +133,6 @@ export const componentCatalog: ComponentDef[] = [
     category: "messaging",
     icon: SiGooglecloud,
   },
-
   { id: "auth0", label: "Auth0", category: "auth", icon: SiAuth0 },
   {
     id: "custom-jwt",
@@ -153,7 +147,6 @@ export const componentCatalog: ComponentDef[] = [
     category: "auth",
     icon: SiFirebase,
   },
-
   {
     id: "s3",
     label: "S3 / Object Storage",
@@ -172,7 +165,6 @@ export const componentCatalog: ComponentDef[] = [
     category: "storage",
     icon: HardDrive,
   },
-
   {
     id: "elasticsearch",
     label: "Elasticsearch",

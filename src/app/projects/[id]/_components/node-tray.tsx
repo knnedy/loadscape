@@ -28,8 +28,9 @@ export function NodeTray() {
               <button
                 key={component.id}
                 onClick={() => addComponent(component)}
-                className="w-full rounded-sm px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
-                {component.label}
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
+                <component.icon size={14} className="shrink-0" />
+                <span className="truncate">{component.label}</span>
               </button>
             ))}
           </PopoverContent>
