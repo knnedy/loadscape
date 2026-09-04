@@ -1,14 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "reactflow/dist/style.css" layer(base);
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-jetbrains-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -42,6 +43,15 @@
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-crit: var(--crit);
+  --color-cat-client: var(--cat-client);
+  --color-cat-networking: var(--cat-networking);
+  --color-cat-compute: var(--cat-compute);
+  --color-cat-database: var(--cat-database);
+  --color-cat-cache: var(--cat-cache);
+  --color-cat-messaging: var(--cat-messaging);
+  --color-cat-auth: var(--cat-auth);
+  --color-cat-storage: var(--cat-storage);
+  --color-cat-search: var(--cat-search);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -73,6 +83,15 @@
   --ok: oklch(0.725 0.172 153.1);
   --warn: oklch(0.718 0.147 77.6);
   --crit: oklch(0.597 0.186 26.1);
+  --cat-client: oklch(0.55 0.02 250);
+  --cat-networking: oklch(0.6 0.13 234);
+  --cat-compute: oklch(0.55 0.16 295);
+  --cat-database: oklch(0.6 0.14 155);
+  --cat-cache: oklch(0.65 0.15 75);
+  --cat-messaging: oklch(0.6 0.18 350);
+  --cat-auth: oklch(0.58 0.19 25);
+  --cat-storage: oklch(0.58 0.13 235);
+  --cat-search: oklch(0.6 0.1 190);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -111,6 +130,15 @@
   --ok: oklch(0.793 0.18 154);
   --warn: oklch(0.776 0.14 76.9);
   --crit: oklch(0.657 0.173 23.1);
+  --cat-client: oklch(0.7 0.02 250);
+  --cat-networking: oklch(0.745 0.113 233);
+  --cat-compute: oklch(0.7 0.15 295);
+  --cat-database: oklch(0.72 0.15 155);
+  --cat-cache: oklch(0.75 0.14 75);
+  --cat-messaging: oklch(0.72 0.17 350);
+  --cat-auth: oklch(0.68 0.18 25);
+  --cat-storage: oklch(0.7 0.12 235);
+  --cat-search: oklch(0.72 0.1 190);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

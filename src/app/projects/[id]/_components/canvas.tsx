@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import ReactFlow, { Background, BackgroundVariant, Controls } from "reactflow";
-import "reactflow/dist/style.css";
 import { ComponentNode } from "@/components/nodes/component-node";
 import { useTopologyStore } from "../_store/topology-provider";
 
@@ -34,7 +33,7 @@ export function Canvas() {
           size={1}
           color="var(--border)"
         />
-        <Controls className="bg-card! border-border! fill-foreground! [&>button]:border-border! [&>button:hover]:bg-accent!" />
+        <Controls className="border border-border bg-card [&_button]:border-border [&_button]:bg-card [&_button]:text-foreground [&_button:hover]:bg-accent [&_svg]:fill-current" />{" "}
       </ReactFlow>
     </div>
   );
