@@ -12,15 +12,18 @@ export function NodeTray() {
   const addComponent = useTopologyStore((s) => s.addComponent);
 
   return (
-    <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border bg-card py-3">
+    <aside className="absolute top-1/2 left-4 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
       {categories.map(({ category, label, icon: Icon }) => (
         <Popover key={category}>
           <PopoverTrigger
             title={label}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
-            <Icon size={18} />
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+            <Icon size={17} />
           </PopoverTrigger>
-          <PopoverContent side="right" align="start" className="w-48 p-1">
+          <PopoverContent
+            side="right"
+            align="center"
+            className="w-48 rounded-xl p-1 shadow-lg">
             <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
               {label}
             </p>
@@ -28,7 +31,7 @@ export function NodeTray() {
               <button
                 key={component.id}
                 onClick={() => addComponent(component)}
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
                 <component.icon size={14} className="shrink-0" />
                 <span className="truncate">{component.label}</span>
               </button>
