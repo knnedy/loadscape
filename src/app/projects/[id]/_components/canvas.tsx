@@ -33,7 +33,10 @@ export function Canvas() {
           size={1}
           color="var(--border)"
         />
-        <Controls className="border border-border bg-card [&_button]:border-border [&_button]:bg-card [&_button]:text-foreground [&_button:hover]:bg-accent [&_svg]:fill-current" />{" "}
+        <Controls
+          position="bottom-right"
+          className="border border-border bg-card [&_button]:border-border [&_button]:bg-card [&_button]:text-foreground [&_button:hover]:bg-accent [&_svg]:fill-current"
+        />
       </ReactFlow>
     </div>
   );
