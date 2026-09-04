@@ -10,10 +10,10 @@ export function WorkspaceShell({ projectName }: { projectName: string }) {
       <div className="flex h-screen w-full flex-col">
         <TopBar projectName={projectName} />
         <div className="flex flex-1 overflow-hidden">
-          <NodeTray />
-          <main className="flex-1 overflow-hidden">
+          <div className="relative flex-1 overflow-hidden">
             <Canvas />
-          </main>
+            <NodeTray />
+          </div>
           <ConfigPanel />
         </div>
       </div>
