@@ -22,13 +22,13 @@ export function NodeTray() {
         return (
           <div key={category} className="group relative">
             <Popover>
-              <PopoverTrigger className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground">
+              <PopoverTrigger className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground">
                 <Icon size={17} />
               </PopoverTrigger>
               <PopoverContent
                 side="right"
                 align="center"
-                className="max-h-96 w-56 overflow-y-auto rounded-xl p-1 shadow-lg">
+                className="max-h-96 w-60 overflow-y-auto rounded-xl p-1 shadow-lg [scrollbar-color:var(--border)_transparent] scrollbar-thin">
                 <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                   {label}
                 </p>
