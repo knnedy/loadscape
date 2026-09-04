@@ -1,5 +1,4 @@
 import type { LucideIcon } from "lucide-react";
-import type { IconType } from "react-icons";
 import {
   Users,
   Scale,
@@ -10,33 +9,15 @@ import {
   Lock,
   HardDrive,
   Search,
-  Globe,
-  CloudLightning,
-  Cog,
 } from "lucide-react";
-import {
-  SiNginx,
-  SiKubernetes,
-  SiPostgresql,
-  SiMysql,
-  SiMongodb,
-  SiApachecassandra,
-  SiRedis,
-  SiApachekafka,
-  SiRabbitmq,
-  SiGooglecloud,
-  SiAuth0,
-  SiFirebase,
-  SiElasticsearch,
-  SiAlgolia,
-} from "react-icons/si";
 import type { NodeCategory } from "@/lib/types/topology";
 
 export interface ComponentDef {
   id: string;
   label: string;
   category: NodeCategory;
-  icon: LucideIcon | IconType;
+  group?: string;
+  icon: string;
 }
 
 export interface CategoryDef {
@@ -62,119 +43,362 @@ export const componentCatalog: ComponentDef[] = [
     id: "client",
     label: "Client / Traffic Generator",
     category: "client",
-    icon: Users,
+    icon: "lucide:users",
   },
+
+  // Networking — load balancing
   {
     id: "load-balancer",
-    label: "Load Balancer",
+    label: "Generic Load Balancer",
     category: "networking",
-    icon: Scale,
+    group: "Load balancing",
+    icon: "lucide:scale",
   },
   {
-    id: "api-gateway",
-    label: "API Gateway",
+    id: "aws-alb",
+    label: "AWS Application LB",
     category: "networking",
-    icon: Globe,
+    group: "Load balancing",
+    icon: "logos:aws",
   },
-  { id: "cdn", label: "CDN", category: "networking", icon: Globe },
+  {
+    id: "cloudflare-lb",
+    label: "Cloudflare Load Balancing",
+    category: "networking",
+    group: "Load balancing",
+    icon: "logos:cloudflare-icon",
+  }, // verify slug
   {
     id: "reverse-proxy",
-    label: "Reverse Proxy (Nginx)",
+    label: "Nginx",
     category: "networking",
-    icon: SiNginx,
+    group: "Load balancing",
+    icon: "logos:nginx",
   },
-  { id: "api-server", label: "API Server", category: "compute", icon: Server },
+  {
+    id: "haproxy",
+    label: "HAProxy",
+    category: "networking",
+    group: "Load balancing",
+    icon: "lucide:scale",
+  }, // no verified logos: entry
+
+  // Networking — CDN & edge
+  {
+    id: "cdn",
+    label: "Generic CDN",
+    category: "networking",
+    group: "CDN & edge",
+    icon: "lucide:globe",
+  },
+  {
+    id: "aws-cloudfront",
+    label: "AWS CloudFront",
+    category: "networking",
+    group: "CDN & edge",
+    icon: "logos:aws-cloudfront",
+  },
+  {
+    id: "cloudflare-cdn",
+    label: "Cloudflare CDN",
+    category: "networking",
+    group: "CDN & edge",
+    icon: "logos:cloudflare-icon",
+  }, // verify slug
+  {
+    id: "fastly",
+    label: "Fastly",
+    category: "networking",
+    group: "CDN & edge",
+    icon: "logos:fastly-icon",
+  }, // verify slug
+
+  // Networking — API & security
+  {
+    id: "api-gateway",
+    label: "API Gateway (generic)",
+    category: "networking",
+    group: "API & security",
+    icon: "lucide:route",
+  },
+  {
+    id: "aws-api-gateway",
+    label: "AWS API Gateway",
+    category: "networking",
+    group: "API & security",
+    icon: "logos:aws-api-gateway",
+  },
+  {
+    id: "cloudflare-waf",
+    label: "Cloudflare WAF",
+    category: "networking",
+    group: "API & security",
+    icon: "logos:cloudflare-icon",
+  }, // verify slug
+  {
+    id: "captcha",
+    label: "Captcha (reCAPTCHA / Turnstile)",
+    category: "networking",
+    group: "API & security",
+    icon: "lucide:shield-check",
+  },
+
+  // Compute — serverless
   {
     id: "serverless-function",
-    label: "Serverless Function",
+    label: "Generic Serverless Function",
     category: "compute",
-    icon: CloudLightning,
+    group: "Serverless",
+    icon: "lucide:cloud-lightning",
   },
   {
-    id: "container",
-    label: "Container (K8s Pod)",
+    id: "aws-lambda",
+    label: "AWS Lambda",
     category: "compute",
-    icon: SiKubernetes,
+    group: "Serverless",
+    icon: "logos:aws-lambda",
+  },
+  {
+    id: "cloudflare-workers",
+    label: "Cloudflare Workers",
+    category: "compute",
+    group: "Serverless",
+    icon: "logos:cloudflare-icon",
+  }, // verify slug
+  {
+    id: "vercel-functions",
+    label: "Vercel Functions",
+    category: "compute",
+    group: "Serverless",
+    icon: "logos:vercel-icon",
+  },
+  {
+    id: "gcp-functions",
+    label: "Google Cloud Functions",
+    category: "compute",
+    group: "Serverless",
+    icon: "logos:google-cloud",
+  },
+
+  // Compute — containers & platforms
+  {
+    id: "container",
+    label: "Kubernetes Pod",
+    category: "compute",
+    group: "Containers & platforms",
+    icon: "logos:kubernetes",
+  },
+  {
+    id: "docker",
+    label: "Docker Container",
+    category: "compute",
+    group: "Containers & platforms",
+    icon: "logos:docker-icon",
+  },
+  {
+    id: "aws-amplify",
+    label: "AWS Amplify",
+    category: "compute",
+    group: "Containers & platforms",
+    icon: "logos:aws-amplify",
+  }, // verify slug
+
+  // Compute — servers
+  {
+    id: "api-server",
+    label: "API Server",
+    category: "compute",
+    group: "Servers",
+    icon: "lucide:server",
   },
   {
     id: "background-worker",
     label: "Background Worker",
     category: "compute",
-    icon: Cog,
+    group: "Servers",
+    icon: "lucide:cog",
   },
+
+  // Database — Postgres-compatible
   {
     id: "postgresql",
     label: "PostgreSQL",
     category: "database",
-    icon: SiPostgresql,
+    group: "Postgres-compatible",
+    icon: "logos:postgresql",
   },
-  { id: "mysql", label: "MySQL", category: "database", icon: SiMysql },
-  { id: "mongodb", label: "MongoDB", category: "database", icon: SiMongodb },
-  { id: "dynamodb", label: "DynamoDB", category: "database", icon: Database },
+  {
+    id: "neon",
+    label: "Neon",
+    category: "database",
+    group: "Postgres-compatible",
+    icon: "logos:neon-icon",
+  }, // verify slug
+  {
+    id: "supabase",
+    label: "Supabase",
+    category: "database",
+    group: "Postgres-compatible",
+    icon: "logos:supabase-icon",
+  },
+
+  // Database — MySQL-compatible
+  {
+    id: "mysql",
+    label: "MySQL",
+    category: "database",
+    group: "MySQL-compatible",
+    icon: "logos:mysql",
+  },
+  {
+    id: "planetscale",
+    label: "PlanetScale",
+    category: "database",
+    group: "MySQL-compatible",
+    icon: "logos:planetscale-icon",
+  }, // verify slug
+
+  // Database — NoSQL
+  {
+    id: "mongodb",
+    label: "MongoDB",
+    category: "database",
+    group: "NoSQL",
+    icon: "logos:mongodb-icon",
+  },
+  {
+    id: "dynamodb",
+    label: "DynamoDB",
+    category: "database",
+    group: "NoSQL",
+    icon: "logos:aws-dynamodb",
+  },
   {
     id: "cassandra",
     label: "Cassandra",
     category: "database",
-    icon: SiApachecassandra,
+    group: "NoSQL",
+    icon: "logos:apache-cassandra",
+  }, // verify slug
+
+  // Cache
+  { id: "redis", label: "Redis", category: "cache", icon: "logos:redis" },
+  {
+    id: "memcached",
+    label: "Memcached",
+    category: "cache",
+    icon: "lucide:database",
   },
-  { id: "redis", label: "Redis", category: "cache", icon: SiRedis },
-  { id: "memcached", label: "Memcached", category: "cache", icon: Database },
-  { id: "kafka", label: "Kafka", category: "messaging", icon: SiApachekafka },
+  {
+    id: "cloudflare-kv",
+    label: "Cloudflare KV",
+    category: "cache",
+    icon: "logos:cloudflare-icon",
+  }, // verify slug
+
+  // Messaging
+  {
+    id: "kafka",
+    label: "Kafka",
+    category: "messaging",
+    icon: "logos:kafka-icon",
+  },
   {
     id: "rabbitmq",
     label: "RabbitMQ",
     category: "messaging",
-    icon: SiRabbitmq,
-  },
-  { id: "sqs", label: "SQS", category: "messaging", icon: MessageSquare },
+    icon: "logos:rabbitmq-icon",
+  }, // double-check visually
+  { id: "sqs", label: "SQS", category: "messaging", icon: "logos:aws-sqs" },
   {
     id: "pubsub",
     label: "Google Pub/Sub",
     category: "messaging",
-    icon: SiGooglecloud,
+    icon: "logos:google-cloud",
   },
-  { id: "auth0", label: "Auth0", category: "auth", icon: SiAuth0 },
+
+  // Auth
+  { id: "auth0", label: "Auth0", category: "auth", icon: "logos:auth0-icon" }, // verify slug
   {
     id: "custom-jwt",
     label: "Custom JWT Server",
     category: "auth",
-    icon: Lock,
+    icon: "lucide:lock",
   },
-  { id: "cognito", label: "Cognito", category: "auth", icon: Lock },
+  {
+    id: "cognito",
+    label: "Cognito",
+    category: "auth",
+    icon: "logos:aws-cognito",
+  },
   {
     id: "firebase-auth",
     label: "Firebase Auth",
     category: "auth",
-    icon: SiFirebase,
-  },
+    icon: "logos:firebase-icon",
+  }, // fixed: was wordmark
+  { id: "clerk", label: "Clerk", category: "auth", icon: "lucide:lock" }, // no verified logos: entry
+
+  // Storage
   {
     id: "s3",
     label: "S3 / Object Storage",
     category: "storage",
-    icon: HardDrive,
+    icon: "logos:aws-s3",
   },
   {
     id: "gcs",
     label: "Google Cloud Storage",
     category: "storage",
-    icon: SiGooglecloud,
+    icon: "logos:google-cloud",
   },
   {
     id: "blob-storage",
     label: "Azure Blob Storage",
     category: "storage",
-    icon: HardDrive,
-  },
+    icon: "logos:microsoft-azure",
+  }, // verify slug
+  {
+    id: "cloudflare-r2",
+    label: "Cloudflare R2",
+    category: "storage",
+    icon: "logos:cloudflare-icon",
+  }, // verify slug
+
+  // Search
   {
     id: "elasticsearch",
     label: "Elasticsearch",
     category: "search",
-    icon: SiElasticsearch,
+    icon: "logos:elasticsearch",
   },
-  { id: "algolia", label: "Algolia", category: "search", icon: SiAlgolia },
-  { id: "meilisearch", label: "Meilisearch", category: "search", icon: Search },
+  {
+    id: "algolia",
+    label: "Algolia",
+    category: "search",
+    icon: "logos:algolia",
+  },
+  {
+    id: "meilisearch",
+    label: "Meilisearch",
+    category: "search",
+    icon: "lucide:search",
+  },
 ];
 
 export function componentsByCategory(category: NodeCategory): ComponentDef[] {
   return componentCatalog.filter((c) => c.category === category);
+}
+
+export function groupedComponentsByCategory(
+  category: NodeCategory,
+): Map<string, ComponentDef[]> {
+  const items = componentsByCategory(category);
+  const groups = new Map<string, ComponentDef[]>();
+  for (const item of items) {
+    const key = item.group ?? "";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
+  }
+  return groups;
 }
