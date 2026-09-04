@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Users,
-  Scale,
+  Network,
   Server,
   Database,
   Zap,
@@ -28,7 +28,7 @@ export interface CategoryDef {
 
 export const categories: CategoryDef[] = [
   { category: "client", label: "Client", icon: Users },
-  { category: "networking", label: "Networking", icon: Scale },
+  { category: "networking", label: "Networking", icon: Network },
   { category: "compute", label: "Compute", icon: Server },
   { category: "database", label: "Database", icon: Database },
   { category: "cache", label: "Cache", icon: Zap },

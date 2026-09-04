@@ -16,7 +16,7 @@ export function ComponentNode({ data, selected }: NodeProps<TopologyNodeData>) {
       style={{ minWidth: 84 }}>
       <Handle type="target" position={Position.Left} className="bg-border!" />
       {component && (
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white p-2 shadow-sm">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white p-2 text-neutral-800 shadow-sm">
           <IconifyIcon icon={component.icon} width={28} height={28} />
         </div>
       )}

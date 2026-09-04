@@ -44,7 +44,7 @@ export function NodeTray() {
                         key={component.id}
                         onClick={() => addComponent(component)}
                         className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white p-0.5">
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white p-0.5 text-neutral-800">
                           <IconifyIcon
                             icon={component.icon}
                             width={14}
