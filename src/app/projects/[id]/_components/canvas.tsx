@@ -26,7 +26,8 @@ export function Canvas() {
         onConnect={onConnect}
         onNodeClick={(_, node) => selectNode(node.id)}
         onPaneClick={() => selectNode(null)}
-        fitView>
+        fitView
+        fitViewOptions={{ maxZoom: 1, padding: 0.4 }}>
         <Background
           variant={BackgroundVariant.Dots}
           gap={24}
