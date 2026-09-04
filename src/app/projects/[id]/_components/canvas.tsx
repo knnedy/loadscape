@@ -29,9 +29,9 @@ export function Canvas() {
         fitView>
         <Background
           variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="var(--border)"
+          gap={24}
+          size={1.5}
+          color="var(--canvas-dot)"
         />
         <Controls
           position="bottom-right"
