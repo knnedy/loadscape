@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect } from "react";
 import ReactFlow, { Background, BackgroundVariant, Controls } from "reactflow";
 import { ComponentNode } from "@/components/nodes/component-node";
 import { useTopologyStore } from "../_store/topology-provider";
@@ -12,8 +12,22 @@ export function Canvas() {
   const onEdgesChange = useTopologyStore((s) => s.onEdgesChange);
   const onConnect = useTopologyStore((s) => s.onConnect);
   const selectNode = useTopologyStore((s) => s.selectNode);
+  const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
+  const deleteNode = useTopologyStore((s) => s.deleteNode);
 
-  const nodeTypes = useMemo(() => ({ component: ComponentNode }), []);
+  const nodeTypes = { component: ComponentNode };
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedNodeId) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+        deleteNode(selectedNodeId);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedNodeId, deleteNode]);
 
   return (
     <div className="h-full w-full bg-background">
