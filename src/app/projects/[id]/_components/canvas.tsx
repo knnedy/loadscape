@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import ReactFlow, { Background, BackgroundVariant, Controls } from "reactflow";
 import { ComponentNode } from "@/components/nodes/component-node";
+import { ComponentEdge } from "@/components/edges/component-edge";
 import { useTopologyStore } from "../_store/topology-provider";
 
 export function Canvas() {
@@ -12,22 +13,26 @@ export function Canvas() {
   const onEdgesChange = useTopologyStore((s) => s.onEdgesChange);
   const onConnect = useTopologyStore((s) => s.onConnect);
   const selectNode = useTopologyStore((s) => s.selectNode);
+  const selectEdge = useTopologyStore((s) => s.selectEdge);
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
+  const selectedEdgeId = useTopologyStore((s) => s.selectedEdgeId);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
+  const deleteEdge = useTopologyStore((s) => s.deleteEdge);
 
   const nodeTypes = useMemo(() => ({ component: ComponentNode }), []);
+  const edgeTypes = useMemo(() => ({ component: ComponentEdge }), []);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedNodeId) {
-        const target = e.target as HTMLElement;
-        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-        deleteNode(selectedNodeId);
-      }
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      if (selectedNodeId) deleteNode(selectedNodeId);
+      if (selectedEdgeId) deleteEdge(selectedEdgeId);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeId, deleteNode]);
+  }, [selectedNodeId, selectedEdgeId, deleteNode, deleteEdge]);
 
   return (
     <div className="h-full w-full bg-background">
@@ -35,11 +40,16 @@ export function Canvas() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={(_, node) => selectNode(node.id)}
-        onPaneClick={() => selectNode(null)}
+        onEdgeClick={(_, edge) => selectEdge(edge.id)}
+        onPaneClick={() => {
+          selectNode(null);
+          selectEdge(null);
+        }}
         fitView
         fitViewOptions={{ maxZoom: 1, padding: 0.4 }}>
         <Background
