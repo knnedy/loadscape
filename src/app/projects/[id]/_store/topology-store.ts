@@ -124,14 +124,16 @@ export function createTopologyStore() {
       }),
     duplicateNode: (id) => {
       const original = get().nodes.find((n) => n.id === id);
-      if (!original) return;
+      if (!original || original.type === "group-container") return;
+      const data = original.data as TopologyNodeData;
       nodeIdCounter += 1;
-      const newId = `${original.data.componentId}-${nodeIdCounter}`;
+      const newId = `${data.componentId}-${nodeIdCounter}`;
       const newNode: Node<TopologyNodeData> = {
         ...original,
         id: newId,
         position: { x: original.position.x + 32, y: original.position.y + 32 },
         selected: false,
+        data,
       };
       set({ nodes: [...get().nodes, newNode], selectedNodeId: newId });
     },
