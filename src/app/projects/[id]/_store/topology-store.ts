@@ -18,7 +18,7 @@ import type {
 } from "@/lib/types/topology";
 import { fixtureNodes, fixtureEdges } from "@/lib/simulation/fixtures";
 import type { ComponentDef } from "@/lib/catalog/components";
-import { updateEdge } from "reactflow";
+import { reconnectEdge } from "reactflow";
 
 function markersForDirection(direction: EdgeDirection) {
   const arrow = { type: MarkerType.ArrowClosed };
@@ -142,6 +142,6 @@ export function createTopologyStore() {
         ),
       }),
     reconnectEdge: (oldEdge, newConnection) =>
-      set({ edges: updateEdge(oldEdge, newConnection, get().edges) }),
+      set({ edges: reconnectEdge(oldEdge, newConnection, get().edges) }),
   }));
 }
