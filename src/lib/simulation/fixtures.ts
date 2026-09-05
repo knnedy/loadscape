@@ -1,5 +1,5 @@
-import type { Node, Edge } from "reactflow";
-import type { TopologyNodeData } from "@/lib/types/topology";
+import { MarkerType, type Node, type Edge } from "reactflow";
+import type { TopologyNodeData, TopologyEdgeData } from "@/lib/types/topology";
 
 export const fixtureNodes: Node<TopologyNodeData>[] = [
   {
@@ -40,8 +40,29 @@ export const fixtureNodes: Node<TopologyNodeData>[] = [
   },
 ];
 
-export const fixtureEdges: Edge[] = [
-  { id: "client-lb", source: "client", target: "lb" },
-  { id: "lb-api", source: "lb", target: "api" },
-  { id: "api-db", source: "api", target: "db" },
+export const fixtureEdges: Edge<TopologyEdgeData>[] = [
+  {
+    id: "client-lb",
+    source: "client",
+    target: "lb",
+    type: "component",
+    data: { style: "sync", direction: "forward" },
+    markerEnd: { type: MarkerType.ArrowClosed },
+  },
+  {
+    id: "lb-api",
+    source: "lb",
+    target: "api",
+    type: "component",
+    data: { style: "sync", direction: "forward" },
+    markerEnd: { type: MarkerType.ArrowClosed },
+  },
+  {
+    id: "api-db",
+    source: "api",
+    target: "db",
+    type: "component",
+    data: { style: "sync", direction: "forward" },
+    markerEnd: { type: MarkerType.ArrowClosed },
+  },
 ];
