@@ -43,6 +43,8 @@ export interface TopologyState {
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
   updateNodeCapacity: (id: string, capacity: number) => void;
+  renameNode: (id: string, label: string) => void;
+  duplicateNode: (id: string) => void;
   deleteNode: (id: string) => void;
   deleteEdge: (id: string) => void;
   updateEdgeLabel: (id: string, label: string) => void;
@@ -104,6 +106,25 @@ export function createTopologyStore() {
           node.id === id ? { ...node, data: { ...node.data, capacity } } : node,
         ),
       }),
+    renameNode: (id, label) =>
+      set({
+        nodes: get().nodes.map((n) =>
+          n.id === id ? { ...n, data: { ...n.data, label } } : n,
+        ),
+      }),
+    duplicateNode: (id) => {
+      const original = get().nodes.find((n) => n.id === id);
+      if (!original) return;
+      nodeIdCounter += 1;
+      const newId = `${original.data.componentId}-${nodeIdCounter}`;
+      const newNode: Node<TopologyNodeData> = {
+        ...original,
+        id: newId,
+        position: { x: original.position.x + 32, y: original.position.y + 32 },
+        selected: false,
+      };
+      set({ nodes: [...get().nodes, newNode], selectedNodeId: newId });
+    },
     deleteNode: (id) =>
       set({
         nodes: get().nodes.filter((n) => n.id !== id),
