@@ -64,7 +64,11 @@ export function ComponentEdge({
         markerStart={markerStart}
         markerEnd={markerEnd}
         style={{
-          stroke: selected ? "var(--primary)" : "var(--border)",
+          stroke: selected
+            ? "var(--primary)"
+            : isAsync
+              ? "var(--edge-async)"
+              : "var(--edge-sync)",
           strokeWidth: selected ? 2 : 1.5,
           strokeDasharray: isAsync ? "6 4" : undefined,
         }}
