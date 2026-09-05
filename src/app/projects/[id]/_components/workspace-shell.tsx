@@ -1,3 +1,5 @@
+"use client";
+
 import { TopBar } from "./top-bar";
 import { NodeTray } from "./node-tray";
 import { Canvas } from "./canvas";

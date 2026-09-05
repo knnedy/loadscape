@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { protocolPresets } from "@/lib/catalog/protocols";
 import { useTopologyStore } from "../_store/topology-provider";
+import { TopologyNodeData } from "@/lib/types/topology";
 
 export function ConfigPanel() {
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
@@ -18,14 +19,15 @@ export function ConfigPanel() {
   const node = nodes.find((n) => n.id === selectedNodeId);
   const edge = edges.find((e) => e.id === selectedEdgeId);
 
-  if (node) {
+  if (node && node.type !== "group-container") {
+    const data = node.data as TopologyNodeData;
     return (
       <aside className="w-70 shrink-0 border-l border-border bg-card p-4">
         <p className="text-xs font-medium text-muted-foreground">
-          {node.data.category.toUpperCase()}
+          {data.category.toUpperCase()}
         </p>
         <h3 className="mt-1 text-sm font-semibold text-foreground">
-          {node.data.label}
+          {data.label}
         </h3>
         <div className="mt-4 flex flex-col gap-1.5">
           <Label htmlFor="capacity" className="text-xs">
@@ -34,7 +36,7 @@ export function ConfigPanel() {
           <Input
             id="capacity"
             type="number"
-            value={node.data.capacity ?? ""}
+            value={data.capacity ?? ""}
             onChange={(e) =>
               updateNodeCapacity(node.id, Number(e.target.value))
             }
