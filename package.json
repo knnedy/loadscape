@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@iconify-json/logos": "^1.2.13",
+    "@iconify-json/lucide": "^1.2.129",
     "@iconify/react": "^6.0.2",
     "better-auth": "^1.7.2",
     "class-variance-authority": "^0.7.1",
