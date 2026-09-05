@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import ReactFlow, { Background, BackgroundVariant, Controls } from "reactflow";
 import { ComponentNode } from "@/components/nodes/component-node";
 import { useTopologyStore } from "../_store/topology-provider";
@@ -15,7 +15,7 @@ export function Canvas() {
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
 
-  const nodeTypes = { component: ComponentNode };
+  const nodeTypes = useMemo(() => ({ component: ComponentNode }), []);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

@@ -27,7 +27,7 @@ export function ComponentNode({
             e.stopPropagation();
             deleteNode(id);
           }}
-          className="absolute -top-2 -right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm hover:opacity-90">
+          className="nodrag absolute -top-2 -right-2 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm hover:opacity-90">
           <X size={12} />
         </button>
       )}

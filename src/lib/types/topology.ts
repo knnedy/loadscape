@@ -15,3 +15,12 @@ export interface TopologyNodeData {
   category: NodeCategory;
   capacity?: number;
 }
+
+export type EdgeStyle = "sync" | "async";
+export type EdgeDirection = "forward" | "bidirectional" | "none";
+
+export interface TopologyEdgeData {
+  label?: string;
+  style: EdgeStyle;
+  direction: EdgeDirection;
+}
