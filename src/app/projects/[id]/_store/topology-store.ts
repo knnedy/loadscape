@@ -19,6 +19,8 @@ import type {
 import { fixtureNodes, fixtureEdges } from "@/lib/simulation/fixtures";
 import type { ComponentDef } from "@/lib/catalog/components";
 import { reconnectEdge } from "reactflow";
+import type { TopologyGroupData } from "@/lib/types/topology";
+import { groupColorPalette } from "@/lib/catalog/group-colors";
 
 function markersForDirection(direction: EdgeDirection) {
   const arrow = { type: MarkerType.ArrowClosed };
@@ -32,7 +34,7 @@ function markersForDirection(direction: EdgeDirection) {
 }
 
 export interface TopologyState {
-  nodes: Node<TopologyNodeData>[];
+  nodes: Node<TopologyNodeData | TopologyGroupData>[];
   edges: Edge<TopologyEdgeData>[];
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
@@ -53,6 +55,14 @@ export interface TopologyState {
   reconnectEdge: (
     oldEdge: Edge<TopologyEdgeData>,
     newConnection: Connection,
+  ) => void;
+  addGroup: () => void;
+  renameGroup: (id: string, label: string) => void;
+  updateGroupColor: (id: string, color: string) => void;
+  reparentNode: (
+    nodeId: string,
+    targetGroupId: string | null,
+    positionAbsolute: { x: number; y: number },
   ) => void;
 }
 
@@ -125,13 +135,43 @@ export function createTopologyStore() {
       };
       set({ nodes: [...get().nodes, newNode], selectedNodeId: newId });
     },
-    deleteNode: (id) =>
+    deleteNode: (id) => {
+      const node = get().nodes.find((n) => n.id === id);
+      if (!node) return;
+      if (node.type === "group-container") {
+        const nodes = get()
+          .nodes.filter((n) => n.id !== id)
+          .map((n) =>
+            n.parentId === id
+              ? {
+                  ...(() => {
+                    const { parentId, extent, ...rest } = n as typeof n & {
+                      parentId?: string;
+                      extent?: string;
+                    };
+                    return rest;
+                  })(),
+                  position: {
+                    x: n.position.x + node.position.x,
+                    y: n.position.y + node.position.y,
+                  },
+                }
+              : n,
+          );
+        set({
+          nodes,
+          selectedNodeId:
+            get().selectedNodeId === id ? null : get().selectedNodeId,
+        });
+        return;
+      }
       set({
         nodes: get().nodes.filter((n) => n.id !== id),
         edges: get().edges.filter((e) => e.source !== id && e.target !== id),
         selectedNodeId:
           get().selectedNodeId === id ? null : get().selectedNodeId,
-      }),
+      });
+    },
     deleteEdge: (id) =>
       set({
         edges: get().edges.filter((e) => e.id !== id),
@@ -164,5 +204,61 @@ export function createTopologyStore() {
       }),
     reconnectEdge: (oldEdge, newConnection) =>
       set({ edges: reconnectEdge(oldEdge, newConnection, get().edges) }),
+    addGroup: () => {
+      groupIdCounter += 1;
+      const id = `group-${groupIdCounter}`;
+      const color =
+        groupColorPalette[(groupIdCounter - 1) % groupColorPalette.length];
+      const newGroup = {
+        id,
+        type: "group-container",
+        position: { x: 160 + groupIdCounter * 20, y: 60 + groupIdCounter * 20 },
+        style: { width: 320, height: 220 },
+        data: { label: "New Group", color } satisfies TopologyGroupData,
+        zIndex: -1,
+      };
+      set({ nodes: [newGroup, ...get().nodes], selectedNodeId: id });
+    },
+    renameGroup: (id, label) =>
+      set({
+        nodes: get().nodes.map((n) =>
+          n.id === id ? { ...n, data: { ...n.data, label } } : n,
+        ),
+      }),
+    updateGroupColor: (id, color) =>
+      set({
+        nodes: get().nodes.map((n) =>
+          n.id === id ? { ...n, data: { ...n.data, color } } : n,
+        ),
+      }),
+    reparentNode: (nodeId, targetGroupId, positionAbsolute) => {
+      const nodes = get().nodes;
+      const targetGroup = targetGroupId
+        ? nodes.find((n) => n.id === targetGroupId)
+        : null;
+      const updated = nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        if (targetGroup) {
+          return {
+            ...n,
+            parentId: targetGroup.id,
+            extent: "parent" as const,
+            position: {
+              x: positionAbsolute.x - targetGroup.position.x,
+              y: positionAbsolute.y - targetGroup.position.y,
+            },
+          };
+        }
+        const { parentId, extent, ...rest } = n as typeof n & {
+          parentId?: string;
+          extent?: string;
+        };
+        return { ...rest, position: positionAbsolute };
+      });
+      const sorted = [...updated].sort(
+        (a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0),
+      );
+      set({ nodes: sorted });
+    },
   }));
 }
