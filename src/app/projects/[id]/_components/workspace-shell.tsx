@@ -14,11 +14,9 @@ export function WorkspaceShell({ projectName }: { projectName: string }) {
         <TopBar projectName={projectName} />
         <div className="flex flex-1 overflow-hidden">
           <div className="relative flex-1 overflow-hidden">
-            <main className="flex-1 overflow-hidden">
-              <ReactFlowProvider>
-                <Canvas />
-              </ReactFlowProvider>
-            </main>
+            <ReactFlowProvider>
+              <Canvas />
+            </ReactFlowProvider>
             <NodeTray />
           </div>
           <ConfigPanel />
