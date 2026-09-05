@@ -15,6 +15,7 @@ import { Frame } from "lucide-react";
 
 export function NodeTray() {
   const addComponent = useTopologyStore((s) => s.addComponent);
+  const addGroup = useTopologyStore((s) => s.addGroup);
 
   return (
     <aside className="absolute top-1/2 left-4 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
