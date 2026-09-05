@@ -23,6 +23,7 @@ export interface TopologyState {
   addComponent: (component: ComponentDef) => void;
   selectNode: (id: string | null) => void;
   updateNodeCapacity: (id: string, capacity: number) => void;
+  deleteNode: (id: string) => void;
 }
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
@@ -63,6 +64,13 @@ export function createTopologyStore() {
         nodes: get().nodes.map((node) =>
           node.id === id ? { ...node, data: { ...node.data, capacity } } : node,
         ),
+      }),
+    deleteNode: (id: string) =>
+      set({
+        nodes: get().nodes.filter((n) => n.id !== id),
+        edges: get().edges.filter((e) => e.source !== id && e.target !== id),
+        selectedNodeId:
+          get().selectedNodeId === id ? null : get().selectedNodeId,
       }),
   }));
 }
