@@ -85,6 +85,8 @@
   --warn: oklch(0.718 0.147 77.6);
   --crit: oklch(0.597 0.186 26.1);
   --canvas-dot: oklch(0.75 0.01 245);
+  --edge-sync: oklch(0.55 0.14 200);
+  --edge-async: oklch(0.6 0.15 55);
   --cat-client: oklch(0.55 0.02 250);
   --cat-networking: oklch(0.6 0.13 234);
   --cat-compute: oklch(0.55 0.16 295);
@@ -133,6 +135,8 @@
   --warn: oklch(0.776 0.14 76.9);
   --crit: oklch(0.657 0.173 23.1);
   --canvas-dot: oklch(0.32 0.015 250);
+  --edge-sync: oklch(0.7 0.15 200);
+  --edge-async: oklch(0.75 0.15 55);
   --cat-client: oklch(0.7 0.02 250);
   --cat-networking: oklch(0.745 0.113 233);
   --cat-compute: oklch(0.7 0.15 295);
