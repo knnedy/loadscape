@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import ReactFlow, { Background, BackgroundVariant, Controls } from "reactflow";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import ReactFlow, {
+  Background,
+  BackgroundVariant,
+  Controls,
+  type Connection,
+  type Edge,
+} from "reactflow";
 import { ComponentNode } from "@/components/nodes/component-node";
 import { ComponentEdge } from "@/components/edges/component-edge";
+import { isConnectionValid } from "@/lib/topology-validation";
 import { useTopologyStore } from "../_store/topology-provider";
 
 export function Canvas() {
@@ -12,6 +19,7 @@ export function Canvas() {
   const onNodesChange = useTopologyStore((s) => s.onNodesChange);
   const onEdgesChange = useTopologyStore((s) => s.onEdgesChange);
   const onConnect = useTopologyStore((s) => s.onConnect);
+  const reconnectEdge = useTopologyStore((s) => s.reconnectEdge);
   const selectNode = useTopologyStore((s) => s.selectNode);
   const selectEdge = useTopologyStore((s) => s.selectEdge);
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
@@ -21,6 +29,37 @@ export function Canvas() {
 
   const nodeTypes = useMemo(() => ({ component: ComponentNode }), []);
   const edgeTypes = useMemo(() => ({ component: ComponentEdge }), []);
+
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) =>
+      isConnectionValid(connection as Connection, edges),
+    [edges],
+  );
+
+  const edgeUpdateSuccessful = useRef(true);
+
+  const onEdgeUpdateStart = useCallback(() => {
+    edgeUpdateSuccessful.current = false;
+  }, []);
+
+  const onEdgeUpdate = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      if (!isConnectionValid(newConnection, edges, oldEdge.id)) return;
+      edgeUpdateSuccessful.current = true;
+      reconnectEdge(oldEdge, newConnection);
+    },
+    [edges, reconnectEdge],
+  );
+
+  const onEdgeUpdateEnd = useCallback(
+    (_: unknown, edge: Edge) => {
+      if (!edgeUpdateSuccessful.current) {
+        deleteEdge(edge.id);
+      }
+      edgeUpdateSuccessful.current = true;
+    },
+    [deleteEdge],
+  );
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -44,6 +83,10 @@ export function Canvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
+        onEdgeUpdate={onEdgeUpdate}
+        onEdgeUpdateStart={onEdgeUpdateStart}
+        onEdgeUpdateEnd={onEdgeUpdateEnd}
         onNodeClick={(_, node) => selectNode(node.id)}
         onEdgeClick={(_, edge) => selectEdge(edge.id)}
         onPaneClick={() => {
