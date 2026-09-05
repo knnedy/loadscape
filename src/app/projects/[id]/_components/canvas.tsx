@@ -24,6 +24,7 @@ export function Canvas() {
   const selectEdge = useTopologyStore((s) => s.selectEdge);
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const selectedEdgeId = useTopologyStore((s) => s.selectedEdgeId);
+  const duplicateNode = useTopologyStore((s) => s.duplicateNode);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
   const deleteEdge = useTopologyStore((s) => s.deleteEdge);
 
@@ -65,14 +66,20 @@ export function Canvas() {
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        if (selectedNodeId) duplicateNode(selectedNodeId);
+        return;
+      }
+
       if (e.key !== "Delete" && e.key !== "Backspace") return;
       if (selectedNodeId) deleteNode(selectedNodeId);
       if (selectedEdgeId) deleteEdge(selectedEdgeId);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeId, selectedEdgeId, deleteNode, deleteEdge]);
-
+  }, [selectedNodeId, selectedEdgeId, deleteNode, deleteEdge, duplicateNode]);
   return (
     <div className="h-full w-full bg-background">
       <ReactFlow
