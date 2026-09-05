@@ -24,3 +24,8 @@ export interface TopologyEdgeData {
   style: EdgeStyle;
   direction: EdgeDirection;
 }
+
+export interface TopologyGroupData {
+  label: string;
+  color: string;
+}
