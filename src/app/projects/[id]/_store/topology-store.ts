@@ -70,6 +70,7 @@ export type TopologyStore = ReturnType<typeof createTopologyStore>;
 
 export function createTopologyStore() {
   let nodeIdCounter = 0;
+  let groupIdCounter = 0;
 
   return createStore<TopologyState>((set, get) => ({
     nodes: fixtureNodes,
