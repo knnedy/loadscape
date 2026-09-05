@@ -5,10 +5,13 @@ import ReactFlow, {
   Background,
   BackgroundVariant,
   Controls,
+  useReactFlow,
   type Connection,
   type Edge,
+  type Node,
 } from "reactflow";
 import { ComponentNode } from "@/components/nodes/component-node";
+import { GroupNode } from "@/components/nodes/group-node";
 import { ComponentEdge } from "@/components/edges/component-edge";
 import { isConnectionValid } from "@/lib/topology-validation";
 import { useTopologyStore } from "../_store/topology-provider";
@@ -24,12 +27,18 @@ export function Canvas() {
   const selectEdge = useTopologyStore((s) => s.selectEdge);
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const selectedEdgeId = useTopologyStore((s) => s.selectedEdgeId);
-  const duplicateNode = useTopologyStore((s) => s.duplicateNode);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
   const deleteEdge = useTopologyStore((s) => s.deleteEdge);
+  const duplicateNode = useTopologyStore((s) => s.duplicateNode);
+  const reparentNode = useTopologyStore((s) => s.reparentNode);
 
-  const nodeTypes = useMemo(() => ({ component: ComponentNode }), []);
+  const nodeTypes = useMemo(
+    () => ({ component: ComponentNode, "group-container": GroupNode }),
+    [],
+  );
   const edgeTypes = useMemo(() => ({ component: ComponentEdge }), []);
+
+  const { getIntersectingNodes } = useReactFlow();
 
   const isValidConnection = useCallback(
     (connection: Connection | Edge) =>
@@ -38,11 +47,9 @@ export function Canvas() {
   );
 
   const edgeUpdateSuccessful = useRef(true);
-
   const onEdgeUpdateStart = useCallback(() => {
     edgeUpdateSuccessful.current = false;
   }, []);
-
   const onEdgeUpdate = useCallback(
     (oldEdge: Edge, newConnection: Connection) => {
       if (!isConnectionValid(newConnection, edges, oldEdge.id)) return;
@@ -51,15 +58,24 @@ export function Canvas() {
     },
     [edges, reconnectEdge],
   );
-
   const onEdgeUpdateEnd = useCallback(
     (_: unknown, edge: Edge) => {
-      if (!edgeUpdateSuccessful.current) {
-        deleteEdge(edge.id);
-      }
+      if (!edgeUpdateSuccessful.current) deleteEdge(edge.id);
       edgeUpdateSuccessful.current = true;
     },
     [deleteEdge],
+  );
+
+  const onNodeDragStop = useCallback(
+    (_: unknown, node: Node) => {
+      if (node.type === "group-container") return;
+      const overlappingGroup = getIntersectingNodes(node).find(
+        (n) => n.type === "group-container",
+      );
+      const absolutePosition = node.positionAbsolute ?? node.position;
+      reparentNode(node.id, overlappingGroup?.id ?? null, absolutePosition);
+    },
+    [getIntersectingNodes, reparentNode],
   );
 
   useEffect(() => {
@@ -80,6 +96,7 @@ export function Canvas() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedNodeId, selectedEdgeId, deleteNode, deleteEdge, duplicateNode]);
+
   return (
     <div className="h-full w-full bg-background">
       <ReactFlow
@@ -91,9 +108,10 @@ export function Canvas() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
-        onReconnect={onEdgeUpdate}
-        onReconnectStart={onEdgeUpdateStart}
-        onReconnectEnd={onEdgeUpdateEnd}
+        onEdgeUpdate={onEdgeUpdate}
+        onEdgeUpdateStart={onEdgeUpdateStart}
+        onEdgeUpdateEnd={onEdgeUpdateEnd}
+        onNodeDragStop={onNodeDragStop}
         onNodeClick={(_, node) => selectNode(node.id)}
         onEdgeClick={(_, edge) => selectEdge(edge.id)}
         onPaneClick={() => {

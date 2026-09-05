@@ -11,6 +11,7 @@ import {
 } from "@/lib/catalog/components";
 import { useTopologyStore } from "../_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
+import { Frame } from "lucide-react";
 
 export function NodeTray() {
   const addComponent = useTopologyStore((s) => s.addComponent);
@@ -64,6 +65,13 @@ export function NodeTray() {
           </div>
         );
       })}
+      <div className="my-1 h-px w-6 bg-border" />
+      <button
+        title="Add group"
+        onClick={addGroup}
+        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+        <Frame size={17} />
+      </button>
     </aside>
   );
 }
