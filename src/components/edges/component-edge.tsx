@@ -12,6 +12,8 @@ import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 
 export function ComponentEdge({
   id,
+  source,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -24,8 +26,18 @@ export function ComponentEdge({
   selected,
 }: EdgeProps<TopologyEdgeData>) {
   const updateEdgeLabel = useTopologyStore((s) => s.updateEdgeLabel);
+  const allEdges = useTopologyStore((s) => s.edges);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data?.label ?? "");
+
+  const siblings = allEdges.filter(
+    (e) =>
+      (e.source === source && e.target === target) ||
+      (e.source === target && e.target === source),
+  );
+  const index = siblings.findIndex((e) => e.id === id);
+  const offset =
+    siblings.length > 1 ? (index - (siblings.length - 1) / 2) * 28 : 0;
 
   const [path, labelX, labelY] = getSmoothStepPath({
     sourceX,
@@ -34,6 +46,7 @@ export function ComponentEdge({
     targetY,
     sourcePosition,
     targetPosition,
+    centerY: (sourceY + targetY) / 2 + offset,
     borderRadius: 8,
   });
 
