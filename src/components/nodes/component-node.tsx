@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
 import { X } from "lucide-react";
 import type { TopologyNodeData } from "@/lib/types/topology";
@@ -14,6 +15,17 @@ export function ComponentNode({
 }: NodeProps<TopologyNodeData>) {
   const component = componentCatalog.find((c) => c.id === data.componentId);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
+  const renameNode = useTopologyStore((s) => s.renameNode);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(data.label);
+
+  function commit() {
+    const trimmed = draft.trim();
+    if (trimmed) renameNode(id, trimmed);
+    else setDraft(data.label);
+    setEditing(false);
+  }
 
   return (
     <div
@@ -37,9 +49,32 @@ export function ComponentNode({
           <IconifyIcon icon={component.icon} width={28} height={28} />
         </div>
       )}
-      <span className="text-center text-xs leading-tight font-medium text-foreground">
-        {data.label}
-      </span>
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") {
+              setDraft(data.label);
+              setEditing(false);
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="nodrag w-20 rounded border border-border bg-card px-1 py-0.5 text-center text-xs text-foreground outline-none"
+        />
+      ) : (
+        <span
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            setEditing(true);
+          }}
+          className="text-center text-xs leading-tight font-medium text-foreground">
+          {data.label}
+        </span>
+      )}
       <Handle type="source" position={Position.Right} className="bg-border!" />
     </div>
   );
