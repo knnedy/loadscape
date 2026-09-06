@@ -19,12 +19,15 @@ import { categories, componentCatalog } from "@/lib/catalog/components";
 import { useTopologyStore } from "../_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
 import { Map } from "lucide-react";
+import { LayoutTemplate } from "lucide-react";
+import { templates } from "@/lib/catalog/templates";
 
 export function CanvasToolbar() {
   const addComponent = useTopologyStore((s) => s.addComponent);
   const addGroup = useTopologyStore((s) => s.addGroup);
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
   const toggleMiniMap = useTopologyStore((s) => s.toggleMiniMap);
+  const insertTemplate = useTopologyStore((s) => s.insertTemplate);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -91,6 +94,31 @@ export function CanvasToolbar() {
         className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
         <Frame size={17} />
       </button>
+      <Popover>
+        <PopoverTrigger
+          title="Insert template"
+          className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground">
+          <LayoutTemplate size={17} />
+        </PopoverTrigger>
+        <PopoverContent side="right" align="start" className="w-64 p-1">
+          <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+            Scenario templates
+          </p>
+          {templates.map((template) => (
+            <button
+              key={template.id}
+              onClick={() => insertTemplate(template)}
+              className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-accent">
+              <span className="text-sm font-medium text-foreground">
+                {template.name}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {template.description}
+              </span>
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
       <button
         title="Toggle minimap"
         onClick={toggleMiniMap}
