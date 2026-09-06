@@ -70,6 +70,9 @@ export interface TopologyState {
   showMiniMap: boolean;
   toggleMiniMap: () => void;
   insertTemplate: (template: Template) => void;
+  addNote: () => void;
+  updateNoteText: (id: string, text: string) => void;
+  updateNoteColor: (id: string, color: string) => void;
 }
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
@@ -77,6 +80,7 @@ export type TopologyStore = ReturnType<typeof createTopologyStore>;
 export function createTopologyStore() {
   let nodeIdCounter = 0;
   let groupIdCounter = 0;
+  let noteIdCounter = 0;
 
   return createStore<TopologyState>((set, get) => ({
     nodes: fixtureNodes,
@@ -126,7 +130,7 @@ export function createTopologyStore() {
     renameNode: (id, label) =>
       set({
         nodes: get().nodes.map((n) =>
-          n.id === id ? { ...n, data: { ...n.data, label } } : n,
+          n.id === id ? ({ ...n, data: { ...n.data, label } } as typeof n) : n,
         ),
       }),
     duplicateNode: (id) => {
@@ -312,5 +316,31 @@ export function createTopologyStore() {
         edges: [...get().edges, ...newEdges],
       });
     },
+    addNote: () => {
+      noteIdCounter += 1;
+      const id = `note-${noteIdCounter}`;
+      const color =
+        groupColorPalette[(noteIdCounter - 1) % groupColorPalette.length];
+      const newNote = {
+        id,
+        type: "note",
+        position: { x: 200 + noteIdCounter * 20, y: 400 + noteIdCounter * 20 },
+        style: { width: 200, height: 140 },
+        data: { text: "", color } satisfies TopologyNoteData,
+      };
+      set({ nodes: [...get().nodes, newNote], selectedNodeId: id });
+    },
+    updateNoteText: (id, text) =>
+      set({
+        nodes: get().nodes.map((n) =>
+          n.id === id ? { ...n, data: { ...n.data, text } } : n,
+        ),
+      }),
+    updateNoteColor: (id, color) =>
+      set({
+        nodes: get().nodes.map((n) =>
+          n.id === id ? { ...n, data: { ...n.data, color } } : n,
+        ),
+      }),
   }));
 }
