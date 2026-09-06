@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import ReactFlow, {
   Background,
   BackgroundVariant,
-  ConnectionMode,
   Controls,
+  MiniMap,
+  ConnectionMode,
   useReactFlow,
   type Connection,
   type Edge,

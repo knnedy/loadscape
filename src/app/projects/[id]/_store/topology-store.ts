@@ -64,6 +64,8 @@ export interface TopologyState {
     targetGroupId: string | null,
     positionAbsolute: { x: number; y: number },
   ) => void;
+  showMiniMap: boolean;
+  toggleMiniMap: () => void;
 }
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
@@ -263,5 +265,7 @@ export function createTopologyStore() {
       );
       set({ nodes: sorted });
     },
+    showMiniMap: false,
+    toggleMiniMap: () => set({ showMiniMap: !get().showMiniMap }),
   }));
 }
