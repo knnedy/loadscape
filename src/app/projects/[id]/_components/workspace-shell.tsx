@@ -1,7 +1,7 @@
 "use client";
 
 import { TopBar } from "./top-bar";
-import { NodeTray } from "./node-tray";
+import { CanvasToolbar } from "./canvas-toolbar";
 import { Canvas } from "./canvas";
 import { ConfigPanel } from "./config-panel";
 import { TopologyProvider } from "../_store/topology-provider";
@@ -17,7 +17,7 @@ export function WorkspaceShell({ projectName }: { projectName: string }) {
             <ReactFlowProvider>
               <Canvas />
             </ReactFlowProvider>
-            <NodeTray />
+            <CanvasToolbar />
           </div>
           <ConfigPanel />
         </div>

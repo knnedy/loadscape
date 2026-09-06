@@ -20,7 +20,7 @@ import { useTopologyStore } from "../_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
 import { Map } from "lucide-react";
 
-export function NodeTray() {
+export function CanvasToolbar() {
   const addComponent = useTopologyStore((s) => s.addComponent);
   const addGroup = useTopologyStore((s) => s.addGroup);
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
