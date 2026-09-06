@@ -21,6 +21,8 @@ import type { ComponentDef } from "@/lib/catalog/components";
 import { reconnectEdge } from "reactflow";
 import type { TopologyGroupData } from "@/lib/types/topology";
 import { groupColorPalette } from "@/lib/catalog/group-colors";
+import { componentCatalog } from "@/lib/catalog/components";
+import type { Template } from "@/lib/catalog/templates";
 
 function markersForDirection(direction: EdgeDirection) {
   const arrow = { type: MarkerType.ArrowClosed };
@@ -66,6 +68,7 @@ export interface TopologyState {
   ) => void;
   showMiniMap: boolean;
   toggleMiniMap: () => void;
+  insertTemplate: (template: Template) => void;
 }
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
@@ -267,5 +270,46 @@ export function createTopologyStore() {
     },
     showMiniMap: false,
     toggleMiniMap: () => set({ showMiniMap: !get().showMiniMap }),
+    insertTemplate: (template) => {
+      const offsetX = 900;
+      const offsetY = 40;
+      const idMap = new Map<number, string>();
+
+      const newNodes: Node<TopologyNodeData>[] = template.nodes.map(
+        (tn, index) => {
+          const component = componentCatalog.find(
+            (c) => c.id === tn.componentId,
+          );
+          if (!component)
+            throw new Error(`Unknown component id: ${tn.componentId}`);
+          nodeIdCounter += 1;
+          const id = `${component.id}-${nodeIdCounter}`;
+          idMap.set(index, id);
+          return {
+            id,
+            type: "component",
+            position: { x: offsetX + tn.x, y: offsetY + tn.y },
+            data: {
+              componentId: component.id,
+              label: component.label,
+              category: component.category,
+            },
+          };
+        },
+      );
+      const newEdges: Edge<TopologyEdgeData>[] = template.edges.map((te) => ({
+        id: `edge-${idMap.get(te.from)}-${idMap.get(te.to)}-${Date.now()}-${Math.random()}`,
+        source: idMap.get(te.from)!,
+        target: idMap.get(te.to)!,
+        type: "component",
+        data: { style: "sync", direction: "forward" },
+        ...markersForDirection("forward"),
+      }));
+
+      set({
+        nodes: [...get().nodes, ...newNodes],
+        edges: [...get().edges, ...newEdges],
+      });
+    },
   }));
 }
