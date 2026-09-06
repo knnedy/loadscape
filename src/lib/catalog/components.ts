@@ -9,6 +9,9 @@ import {
   Lock,
   HardDrive,
   Search,
+  Activity,
+  Brain,
+  Cable,
 } from "lucide-react";
 import type { NodeCategory } from "@/lib/types/topology";
 
@@ -36,20 +39,46 @@ export const categories: CategoryDef[] = [
   { category: "auth", label: "Auth", icon: Lock },
   { category: "storage", label: "Storage", icon: HardDrive },
   { category: "search", label: "Search", icon: Search },
+  { category: "monitoring", label: "Monitoring", icon: Activity },
+  { category: "ai", label: "AI & ML", icon: Brain },
+  { category: "integrations", label: "Integrations", icon: Cable },
 ];
 
 export const componentCatalog: ComponentDef[] = [
+  // --- Client ---
   {
     id: "client",
     label: "Client / Traffic Generator",
     category: "client",
     icon: "lucide:users",
   },
+  {
+    id: "browser",
+    label: "Web Browser",
+    category: "client",
+    group: "Platforms",
+    icon: "lucide:monitor",
+  },
+  {
+    id: "mobile-app",
+    label: "Mobile App",
+    category: "client",
+    group: "Platforms",
+    icon: "lucide:smartphone",
+  },
+  {
+    id: "iot-device",
+    label: "IoT Device",
+    category: "client",
+    group: "Platforms",
+    icon: "lucide:cpu",
+  },
 
-  // Networking — load balancing
+  // --- Networking ---
+  // Load balancing
   {
     id: "load-balancer",
-    label: "Generic Load Balancer",
+    label: "Generic",
     category: "networking",
     group: "Load balancing",
     icon: "lucide:scale",
@@ -67,7 +96,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "networking",
     group: "Load balancing",
     icon: "logos:cloudflare-icon",
-  }, // verify slug
+  },
   {
     id: "reverse-proxy",
     label: "Nginx",
@@ -81,9 +110,9 @@ export const componentCatalog: ComponentDef[] = [
     category: "networking",
     group: "Load balancing",
     icon: "lucide:scale",
-  }, // no verified logos: entry
+  },
 
-  // Networking — CDN & edge
+  // CDN & edge
   {
     id: "cdn",
     label: "Generic CDN",
@@ -104,19 +133,19 @@ export const componentCatalog: ComponentDef[] = [
     category: "networking",
     group: "CDN & edge",
     icon: "logos:cloudflare-icon",
-  }, // verify slug
+  },
   {
     id: "fastly",
     label: "Fastly",
     category: "networking",
     group: "CDN & edge",
     icon: "logos:fastly-icon",
-  }, // verify slug
+  },
 
-  // Networking — API & security
+  // API & security
   {
     id: "api-gateway",
-    label: "API Gateway (generic)",
+    label: "API Gateway",
     category: "networking",
     group: "API & security",
     icon: "lucide:route",
@@ -134,16 +163,33 @@ export const componentCatalog: ComponentDef[] = [
     category: "networking",
     group: "API & security",
     icon: "logos:cloudflare-icon",
-  }, // verify slug
+  },
   {
     id: "captcha",
-    label: "Captcha (reCAPTCHA / Turnstile)",
+    label: "Captcha",
     category: "networking",
     group: "API & security",
     icon: "lucide:shield-check",
   },
 
-  // Compute — serverless
+  // DNS & Routing
+  {
+    id: "aws-route53",
+    label: "AWS Route 53",
+    category: "networking",
+    group: "DNS & Routing",
+    icon: "logos:aws-route53",
+  },
+  {
+    id: "dns-generic",
+    label: "DNS Provider",
+    category: "networking",
+    group: "DNS & Routing",
+    icon: "lucide:network",
+  },
+
+  // --- Compute ---
+  // Serverless
   {
     id: "serverless-function",
     label: "Generic Serverless Function",
@@ -164,7 +210,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "compute",
     group: "Serverless",
     icon: "logos:cloudflare-icon",
-  }, // verify slug
+  },
   {
     id: "vercel-functions",
     label: "Vercel Functions",
@@ -180,7 +226,7 @@ export const componentCatalog: ComponentDef[] = [
     icon: "logos:google-cloud",
   },
 
-  // Compute — containers & platforms
+  // Containers & platforms
   {
     id: "container",
     label: "Kubernetes Pod",
@@ -196,14 +242,21 @@ export const componentCatalog: ComponentDef[] = [
     icon: "logos:docker-icon",
   },
   {
+    id: "aws-ecs",
+    label: "AWS ECS / Fargate",
+    category: "compute",
+    group: "Containers & platforms",
+    icon: "logos:aws-ecs",
+  },
+  {
     id: "aws-amplify",
     label: "AWS Amplify",
     category: "compute",
     group: "Containers & platforms",
     icon: "logos:aws-amplify",
-  }, // verify slug
+  },
 
-  // Compute — servers
+  // Servers & Frameworks
   {
     id: "api-server",
     label: "API Server",
@@ -212,14 +265,36 @@ export const componentCatalog: ComponentDef[] = [
     icon: "lucide:server",
   },
   {
+    id: "go-server",
+    label: "Go Backend",
+    category: "compute",
+    group: "Servers",
+    icon: "logos:go",
+  },
+  {
+    id: "nextjs-server",
+    label: "Next.js App",
+    category: "compute",
+    group: "Servers",
+    icon: "logos:nextjs-icon",
+  },
+  {
     id: "background-worker",
     label: "Background Worker",
     category: "compute",
     group: "Servers",
     icon: "lucide:cog",
   },
+  {
+    id: "aws-ec2",
+    label: "AWS EC2",
+    category: "compute",
+    group: "Servers",
+    icon: "logos:aws-ec2",
+  },
 
-  // Database — Postgres-compatible
+  // --- Database ---
+  // Postgres-compatible
   {
     id: "postgresql",
     label: "PostgreSQL",
@@ -233,7 +308,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "Postgres-compatible",
     icon: "logos:neon-icon",
-  }, // verify slug
+  },
   {
     id: "supabase",
     label: "Supabase",
@@ -242,7 +317,7 @@ export const componentCatalog: ComponentDef[] = [
     icon: "logos:supabase-icon",
   },
 
-  // Database — MySQL-compatible
+  // MySQL-compatible
   {
     id: "mysql",
     label: "MySQL",
@@ -256,9 +331,9 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "MySQL-compatible",
     icon: "logos:planetscale-icon",
-  }, // verify slug
+  },
 
-  // Database — NoSQL
+  // NoSQL & Edge
   {
     id: "mongodb",
     label: "MongoDB",
@@ -279,10 +354,23 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "NoSQL",
     icon: "logos:apache-cassandra",
-  }, // verify slug
+  },
+  {
+    id: "sqlite-turso",
+    label: "Turso (SQLite)",
+    category: "database",
+    group: "Edge & Embedded",
+    icon: "lucide:database",
+  },
 
-  // Cache
+  // --- Cache ---
   { id: "redis", label: "Redis", category: "cache", icon: "logos:redis" },
+  {
+    id: "upstash-redis",
+    label: "Upstash Redis",
+    category: "cache",
+    icon: "logos:upstash-icon",
+  },
   {
     id: "memcached",
     label: "Memcached",
@@ -294,9 +382,9 @@ export const componentCatalog: ComponentDef[] = [
     label: "Cloudflare KV",
     category: "cache",
     icon: "logos:cloudflare-icon",
-  }, // verify slug
+  },
 
-  // Messaging
+  // --- Messaging ---
   {
     id: "kafka",
     label: "Kafka",
@@ -308,8 +396,15 @@ export const componentCatalog: ComponentDef[] = [
     label: "RabbitMQ",
     category: "messaging",
     icon: "logos:rabbitmq-icon",
-  }, // double-check visually
-  { id: "sqs", label: "SQS", category: "messaging", icon: "logos:aws-sqs" },
+  },
+  { id: "sqs", label: "AWS SQS", category: "messaging", icon: "logos:aws-sqs" },
+  { id: "sns", label: "AWS SNS", category: "messaging", icon: "logos:aws-sns" },
+  {
+    id: "eventbridge",
+    label: "AWS EventBridge",
+    category: "messaging",
+    icon: "logos:aws-eventbridge",
+  },
   {
     id: "pubsub",
     label: "Google Pub/Sub",
@@ -317,17 +412,12 @@ export const componentCatalog: ComponentDef[] = [
     icon: "logos:google-cloud",
   },
 
-  // Auth
-  { id: "auth0", label: "Auth0", category: "auth", icon: "logos:auth0-icon" }, // verify slug
-  {
-    id: "custom-jwt",
-    label: "Custom JWT Server",
-    category: "auth",
-    icon: "lucide:lock",
-  },
+  // --- Auth ---
+  { id: "auth0", label: "Auth0", category: "auth", icon: "logos:auth0-icon" },
+  { id: "clerk", label: "Clerk", category: "auth", icon: "lucide:lock" },
   {
     id: "cognito",
-    label: "Cognito",
+    label: "AWS Cognito",
     category: "auth",
     icon: "logos:aws-cognito",
   },
@@ -336,15 +426,32 @@ export const componentCatalog: ComponentDef[] = [
     label: "Firebase Auth",
     category: "auth",
     icon: "logos:firebase-icon",
-  }, // fixed: was wordmark
-  { id: "clerk", label: "Clerk", category: "auth", icon: "lucide:lock" }, // no verified logos: entry
+  },
+  {
+    id: "next-auth",
+    label: "NextAuth.js",
+    category: "auth",
+    icon: "lucide:shield",
+  },
+  {
+    id: "custom-jwt",
+    label: "Custom JWT Server",
+    category: "auth",
+    icon: "lucide:lock",
+  },
 
-  // Storage
+  // --- Storage ---
   {
     id: "s3",
     label: "S3 / Object Storage",
     category: "storage",
     icon: "logos:aws-s3",
+  },
+  {
+    id: "cloudflare-r2",
+    label: "Cloudflare R2",
+    category: "storage",
+    icon: "logos:cloudflare-icon",
   },
   {
     id: "gcs",
@@ -357,15 +464,9 @@ export const componentCatalog: ComponentDef[] = [
     label: "Azure Blob Storage",
     category: "storage",
     icon: "logos:microsoft-azure",
-  }, // verify slug
-  {
-    id: "cloudflare-r2",
-    label: "Cloudflare R2",
-    category: "storage",
-    icon: "logos:cloudflare-icon",
-  }, // verify slug
+  },
 
-  // Search
+  // --- Search ---
   {
     id: "elasticsearch",
     label: "Elasticsearch",
@@ -383,6 +484,84 @@ export const componentCatalog: ComponentDef[] = [
     label: "Meilisearch",
     category: "search",
     icon: "lucide:search",
+  },
+
+  // --- Monitoring & Observability ---
+  {
+    id: "datadog",
+    label: "Datadog",
+    category: "monitoring",
+    icon: "logos:datadog-icon",
+  },
+  {
+    id: "grafana",
+    label: "Grafana",
+    category: "monitoring",
+    icon: "logos:grafana",
+  },
+  {
+    id: "prometheus",
+    label: "Prometheus",
+    category: "monitoring",
+    icon: "logos:prometheus",
+  },
+  {
+    id: "sentry",
+    label: "Sentry",
+    category: "monitoring",
+    icon: "logos:sentry-icon",
+  },
+  {
+    id: "cloudwatch",
+    label: "AWS CloudWatch",
+    category: "monitoring",
+    icon: "logos:aws-cloudwatch",
+  },
+
+  // --- AI & ML ---
+  {
+    id: "openai",
+    label: "OpenAI API",
+    category: "ai",
+    icon: "logos:openai-icon",
+  },
+  {
+    id: "huggingface",
+    label: "Hugging Face",
+    category: "ai",
+    icon: "logos:huggingface-icon",
+  },
+  {
+    id: "pinecone",
+    label: "Pinecone (Vector DB)",
+    category: "ai",
+    icon: "lucide:database",
+  },
+
+  // --- Integrations / Third-Party ---
+  {
+    id: "stripe",
+    label: "Stripe",
+    category: "integrations",
+    icon: "logos:stripe",
+  },
+  {
+    id: "twilio",
+    label: "Twilio",
+    category: "integrations",
+    icon: "logos:twilio-icon",
+  },
+  {
+    id: "sendgrid",
+    label: "SendGrid",
+    category: "integrations",
+    icon: "logos:sendgrid-icon",
+  },
+  {
+    id: "daraja-api",
+    label: "Daraja API",
+    category: "integrations",
+    icon: "lucide:plug",
   },
 ];
 

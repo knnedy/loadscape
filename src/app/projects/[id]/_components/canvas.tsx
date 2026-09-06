@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import ReactFlow, {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   useReactFlow,
   type Connection,
@@ -119,7 +120,8 @@ export function Canvas() {
           selectEdge(null);
         }}
         fitView
-        fitViewOptions={{ maxZoom: 1, padding: 0.4 }}>
+        fitViewOptions={{ maxZoom: 1, padding: 0.4 }}
+        connectionMode={ConnectionMode.Loose}>
         <Background
           variant={BackgroundVariant.Dots}
           gap={24}

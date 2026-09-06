@@ -7,7 +7,10 @@ export type NodeCategory =
   | "messaging"
   | "auth"
   | "storage"
-  | "search";
+  | "search"
+  | "monitoring"
+  | "ai"
+  | "integrations";
 
 export interface TopologyNodeData {
   componentId: string;
