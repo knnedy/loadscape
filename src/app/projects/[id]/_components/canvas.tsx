@@ -136,9 +136,20 @@ export function Canvas() {
         />
         {showMiniMap && (
           <MiniMap
+            position="bottom-left"
             className="border border-border! bg-card!"
-            maskColor="rgba(0,0,0,0.6)"
-            nodeColor="var(--border)"
+            maskColor="rgba(0,0,0,0.5)"
+            nodeColor={(node) => {
+              if (node.type === "group-container") return "transparent";
+              const category = (node.data as { category?: string }).category;
+              return category
+                ? `var(--cat-${category})`
+                : "var(--muted-foreground)";
+            }}
+            nodeStrokeColor="var(--border)"
+            nodeStrokeWidth={2}
+            pannable
+            zoomable
           />
         )}
       </ReactFlow>
