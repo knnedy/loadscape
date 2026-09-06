@@ -15,6 +15,7 @@ import type {
   TopologyEdgeData,
   EdgeStyle,
   EdgeDirection,
+  TopologyNoteData,
 } from "@/lib/types/topology";
 import { fixtureNodes, fixtureEdges } from "@/lib/simulation/fixtures";
 import type { ComponentDef } from "@/lib/catalog/components";
@@ -36,7 +37,7 @@ function markersForDirection(direction: EdgeDirection) {
 }
 
 export interface TopologyState {
-  nodes: Node<TopologyNodeData | TopologyGroupData>[];
+  nodes: Node<TopologyNodeData | TopologyGroupData | TopologyNoteData>[];
   edges: Edge<TopologyEdgeData>[];
   selectedNodeId: string | null;
   selectedEdgeId: string | null;

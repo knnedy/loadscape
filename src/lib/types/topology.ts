@@ -32,3 +32,8 @@ export interface TopologyGroupData {
   label: string;
   color: string;
 }
+
+export interface TopologyNoteData {
+  text: string;
+  color: string;
+}
