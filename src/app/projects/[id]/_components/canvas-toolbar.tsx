@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Frame } from "lucide-react";
+import { Plus, Frame, StickyNote } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -28,6 +28,7 @@ export function CanvasToolbar() {
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
   const toggleMiniMap = useTopologyStore((s) => s.toggleMiniMap);
   const insertTemplate = useTopologyStore((s) => s.insertTemplate);
+  const addNote = useTopologyStore((s) => s.addNote);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -119,6 +120,12 @@ export function CanvasToolbar() {
           ))}
         </PopoverContent>
       </Popover>
+      <button
+        title="Add note"
+        onClick={addNote}
+        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+        <StickyNote size={17} />
+      </button>
       <button
         title="Toggle minimap"
         onClick={toggleMiniMap}
