@@ -1,51 +1,69 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { Plus, Frame } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  categories,
-  groupedComponentsByCategory,
-} from "@/lib/catalog/components";
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+import { categories, componentCatalog } from "@/lib/catalog/components";
 import { useTopologyStore } from "../_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
-import { Frame } from "lucide-react";
 
 export function NodeTray() {
   const addComponent = useTopologyStore((s) => s.addComponent);
   const addGroup = useTopologyStore((s) => s.addGroup);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <aside className="absolute top-1/2 left-4 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
-      {categories.map(({ category, label, icon: Icon }) => {
-        const groups = groupedComponentsByCategory(category);
-        return (
-          <div key={category} className="group relative">
-            <Popover>
-              <PopoverTrigger className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground">
-                <Icon size={17} />
-              </PopoverTrigger>
-              <PopoverContent
-                side="right"
-                align="center"
-                className="max-h-96 w-60 overflow-y-auto rounded-xl p-1 shadow-lg [scrollbar-color:var(--border)_transparent] scrollbar-thin">
-                <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                  {label}
-                </p>
-                {Array.from(groups.entries()).map(([groupName, items]) => (
-                  <div key={groupName || "ungrouped"}>
-                    {groupName && (
-                      <p className="px-2 pt-2 pb-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
-                        {groupName}
-                      </p>
-                    )}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          title="Add component (⌘K)"
+          className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+          <Plus size={18} />
+        </PopoverTrigger>
+        <PopoverContent side="right" align="start" className="w-72 p-0">
+          <Command>
+            <CommandInput placeholder="Search components..." />
+            <CommandList className="max-h-80">
+              <CommandEmpty>No components found.</CommandEmpty>
+              {categories.map(({ category, label }) => {
+                const items = componentCatalog.filter(
+                  (c) => c.category === category,
+                );
+                if (items.length === 0) return null;
+                return (
+                  <CommandGroup key={category} heading={label}>
                     {items.map((component) => (
-                      <button
+                      <CommandItem
                         key={component.id}
-                        onClick={() => addComponent(component)}
-                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
+                        value={`${component.label} ${label}`}
+                        onSelect={() => {
+                          addComponent(component);
+                          setOpen(false);
+                        }}
+                        className="gap-2">
                         <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white p-0.5 text-neutral-800">
                           <IconifyIcon
                             icon={component.icon}
@@ -54,18 +72,15 @@ export function NodeTray() {
                           />
                         </div>
                         <span className="truncate">{component.label}</span>
-                      </button>
+                      </CommandItem>
                     ))}
-                  </div>
-                ))}
-              </PopoverContent>
-            </Popover>
-            <span className="pointer-events-none absolute top-1/2 left-full z-20 ml-2 -translate-y-1/2 rounded-md bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-has-aria-expanded:opacity-0">
-              {label}
-            </span>
-          </div>
-        );
-      })}
+                  </CommandGroup>
+                );
+              })}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
       <div className="my-1 h-px w-6 bg-border" />
       <button
         title="Add group"
