@@ -19,7 +19,7 @@ export function ConfigPanel() {
   const node = nodes.find((n) => n.id === selectedNodeId);
   const edge = edges.find((e) => e.id === selectedEdgeId);
 
-  if (node && node.type !== "group-container") {
+  if (node && node.type === "component") {
     const data = node.data as TopologyNodeData;
     return (
       <aside className="w-70 shrink-0 border-l border-border bg-card p-4">
