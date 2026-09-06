@@ -22,7 +22,7 @@ import { reconnectEdge } from "reactflow";
 import type { TopologyGroupData } from "@/lib/types/topology";
 import { groupColorPalette } from "@/lib/catalog/group-colors";
 import { componentCatalog } from "@/lib/catalog/components";
-import type { Template } from "@/lib/catalog/templates";
+import { Template } from "@/lib/catalog/templates";
 
 function markersForDirection(direction: EdgeDirection) {
   const arrow = { type: MarkerType.ArrowClosed };
@@ -270,7 +270,7 @@ export function createTopologyStore() {
     },
     showMiniMap: false,
     toggleMiniMap: () => set({ showMiniMap: !get().showMiniMap }),
-    insertTemplate: (template) => {
+    insertTemplate: (template: Template) => {
       const offsetX = 900;
       const offsetY = 40;
       const idMap = new Map<number, string>();
