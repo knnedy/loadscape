@@ -33,6 +33,7 @@ export function Canvas() {
   const deleteEdge = useTopologyStore((s) => s.deleteEdge);
   const duplicateNode = useTopologyStore((s) => s.duplicateNode);
   const reparentNode = useTopologyStore((s) => s.reparentNode);
+  const showMiniMap = useTopologyStore((s) => s.showMiniMap);
 
   const nodeTypes = useMemo(
     () => ({ component: ComponentNode, "group-container": GroupNode }),
@@ -133,6 +134,13 @@ export function Canvas() {
           position="bottom-right"
           className="border border-border bg-card [&_button]:border-border [&_button]:bg-card [&_button]:text-foreground [&_button:hover]:bg-accent [&_svg]:fill-current"
         />
+        {showMiniMap && (
+          <MiniMap
+            className="border border-border! bg-card!"
+            maskColor="rgba(0,0,0,0.6)"
+            nodeColor="var(--border)"
+          />
+        )}
       </ReactFlow>
     </div>
   );
