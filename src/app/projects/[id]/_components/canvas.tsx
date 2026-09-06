@@ -14,6 +14,7 @@ import ReactFlow, {
 } from "reactflow";
 import { ComponentNode } from "@/components/nodes/component-node";
 import { GroupNode } from "@/components/nodes/group-node";
+import { NoteNode } from "@/components/nodes/note-node";
 import { ComponentEdge } from "@/components/edges/component-edge";
 import { isConnectionValid } from "@/lib/topology-validation";
 import { useTopologyStore } from "../_store/topology-provider";
@@ -36,7 +37,11 @@ export function Canvas() {
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
 
   const nodeTypes = useMemo(
-    () => ({ component: ComponentNode, "group-container": GroupNode }),
+    () => ({
+      component: ComponentNode,
+      "group-container": GroupNode,
+      note: NoteNode,
+    }),
     [],
   );
   const edgeTypes = useMemo(() => ({ component: ComponentEdge }), []);
