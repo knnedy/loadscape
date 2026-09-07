@@ -11,7 +11,6 @@ import {
   useReactFlow,
   type Connection,
   type Edge,
-  type Node,
 } from "@xyflow/react";
 import { ComponentNode } from "@/components/nodes/component-node";
 import { GroupNode } from "@/components/nodes/group-node";
@@ -19,6 +18,7 @@ import { NoteNode } from "@/components/nodes/note-node";
 import { ComponentEdge } from "@/components/edges/component-edge";
 import { isConnectionValid } from "@/lib/topology-validation";
 import { useTopologyStore } from "../_store/topology-provider";
+import type { AppNode, AppEdge } from "../_store/topology-store";
 
 export function Canvas() {
   const nodes = useTopologyStore((s) => s.nodes);
@@ -47,7 +47,7 @@ export function Canvas() {
   );
   const edgeTypes = useMemo(() => ({ component: ComponentEdge }), []);
 
-  const { getIntersectingNodes } = useReactFlow();
+  const { getIntersectingNodes, getInternalNode } = useReactFlow();
 
   const isValidConnection = useCallback(
     (connection: Connection | Edge) =>
@@ -60,7 +60,7 @@ export function Canvas() {
     edgeUpdateSuccessful.current = false;
   }, []);
   const onEdgeUpdate = useCallback(
-    (oldEdge: Edge, newConnection: Connection) => {
+    (oldEdge: AppEdge, newConnection: Connection) => {
       if (!isConnectionValid(newConnection, edges, oldEdge.id)) return;
       edgeUpdateSuccessful.current = true;
       reconnectEdge(oldEdge, newConnection);
@@ -68,7 +68,7 @@ export function Canvas() {
     [edges, reconnectEdge],
   );
   const onEdgeUpdateEnd = useCallback(
-    (_: unknown, edge: Edge) => {
+    (_: unknown, edge: AppEdge) => {
       if (!edgeUpdateSuccessful.current) deleteEdge(edge.id);
       edgeUpdateSuccessful.current = true;
     },
@@ -76,15 +76,17 @@ export function Canvas() {
   );
 
   const onNodeDragStop = useCallback(
-    (_: unknown, node: Node) => {
+    (_: unknown, node: AppNode) => {
       if (node.type === "group-container") return;
       const overlappingGroup = getIntersectingNodes(node).find(
         (n) => n.type === "group-container",
       );
-      const absolutePosition = node.positionAbsolute ?? node.position;
+      const internalNode = getInternalNode(node.id);
+      const absolutePosition =
+        internalNode?.internals.positionAbsolute ?? node.position;
       reparentNode(node.id, overlappingGroup?.id ?? null, absolutePosition);
     },
-    [getIntersectingNodes, reparentNode],
+    [getIntersectingNodes, getInternalNode, reparentNode],
   );
 
   useEffect(() => {
@@ -117,9 +119,9 @@ export function Canvas() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
-        onEdgeUpdate={onEdgeUpdate}
-        onEdgeUpdateStart={onEdgeUpdateStart}
-        onEdgeUpdateEnd={onEdgeUpdateEnd}
+        onReconnect={onEdgeUpdate}
+        onReconnectStart={onEdgeUpdateStart}
+        onReconnectEnd={onEdgeUpdateEnd}
         onNodeDragStop={onNodeDragStop}
         onNodeClick={(_, node) => selectNode(node.id)}
         onEdgeClick={(_, edge) => selectEdge(edge.id)}
