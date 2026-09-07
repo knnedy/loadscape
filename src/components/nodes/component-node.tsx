@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { X } from "lucide-react";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import { componentCatalog } from "@/lib/catalog/components";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
 
+type ComponentNodeType = Node<TopologyNodeData, "component">;
+
 export function ComponentNode({
   id,
   data,
   selected,
-}: NodeProps<TopologyNodeData>) {
+}: NodeProps<ComponentNodeType>) {
   const component = componentCatalog.find((c) => c.id === data.componentId);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
   const renameNode = useTopologyStore((s) => s.renameNode);
