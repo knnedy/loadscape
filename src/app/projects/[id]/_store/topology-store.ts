@@ -24,6 +24,7 @@ import type { TopologyGroupData } from "@/lib/types/topology";
 import { groupColorPalette } from "@/lib/catalog/group-colors";
 import { componentCatalog } from "@/lib/catalog/components";
 import { Template } from "@/lib/catalog/templates";
+import { tidyLayout } from "@/lib/layout";
 
 function markersForDirection(direction: EdgeDirection) {
   const arrow = { type: MarkerType.ArrowClosed };
@@ -73,6 +74,7 @@ export interface TopologyState {
   addNote: () => void;
   updateNoteText: (id: string, text: string) => void;
   updateNoteColor: (id: string, color: string) => void;
+  tidyLayout: () => Promise<void>;
 }
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
@@ -342,5 +344,9 @@ export function createTopologyStore() {
           n.id === id ? { ...n, data: { ...n.data, color } } : n,
         ),
       }),
+    tidyLayout: async () => {
+      const result = await tidyLayout(get().nodes, get().edges);
+      set({ nodes: result });
+    },
   }));
 }
