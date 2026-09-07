@@ -21,6 +21,7 @@ import { Icon as IconifyIcon } from "@iconify/react";
 import { Map } from "lucide-react";
 import { LayoutTemplate } from "lucide-react";
 import { templates } from "@/lib/catalog/templates";
+import { Wand2 } from "lucide-react";
 
 export function CanvasToolbar() {
   const addComponent = useTopologyStore((s) => s.addComponent);
@@ -29,6 +30,7 @@ export function CanvasToolbar() {
   const toggleMiniMap = useTopologyStore((s) => s.toggleMiniMap);
   const insertTemplate = useTopologyStore((s) => s.insertTemplate);
   const addNote = useTopologyStore((s) => s.addNote);
+  const tidyLayout = useTopologyStore((s) => s.tidyLayout);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -135,6 +137,12 @@ export function CanvasToolbar() {
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         }`}>
         <Map size={17} />
+      </button>
+      <button
+        title="Tidy up layout"
+        onClick={() => tidyLayout()}
+        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+        <Wand2 size={17} />
       </button>
     </aside>
   );
