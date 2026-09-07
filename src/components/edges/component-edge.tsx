@@ -5,10 +5,13 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+  type Edge,
   type EdgeProps,
 } from "@xyflow/react";
 import type { TopologyEdgeData } from "@/lib/types/topology";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
+
+type ComponentEdgeType = Edge<TopologyEdgeData, "component">;
 
 export function ComponentEdge({
   id,
@@ -24,7 +27,7 @@ export function ComponentEdge({
   markerEnd,
   data,
   selected,
-}: EdgeProps<TopologyEdgeData>) {
+}: EdgeProps<ComponentEdgeType>) {
   const updateEdgeLabel = useTopologyStore((s) => s.updateEdgeLabel);
   const allEdges = useTopologyStore((s) => s.edges);
   const [editing, setEditing] = useState(false);
