@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { NodeResizer, type NodeProps } from "@xyflow/react";
+import { NodeResizer, type Node, type NodeProps } from "@xyflow/react";
 import { X } from "lucide-react";
 import {
   Popover,
@@ -12,11 +12,9 @@ import { groupColorPalette } from "@/lib/catalog/group-colors";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 import type { TopologyGroupData } from "@/lib/types/topology";
 
-export function GroupNode({
-  id,
-  data,
-  selected,
-}: NodeProps<TopologyGroupData>) {
+type GroupNodeType = Node<TopologyGroupData, "group-container">;
+
+export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
   const renameGroup = useTopologyStore((s) => s.renameGroup);
   const updateGroupColor = useTopologyStore((s) => s.updateGroupColor);
   const deleteNode = useTopologyStore((s) => s.deleteNode);

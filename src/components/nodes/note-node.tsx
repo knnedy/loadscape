@@ -1,6 +1,6 @@
 "use client";
 
-import { NodeResizer, type NodeProps } from "@xyflow/react";
+import { NodeResizer, type Node, type NodeProps } from "@xyflow/react";
 import { X } from "lucide-react";
 import {
   Popover,
@@ -11,7 +11,9 @@ import { groupColorPalette } from "@/lib/catalog/group-colors";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 import type { TopologyNoteData } from "@/lib/types/topology";
 
-export function NoteNode({ id, data, selected }: NodeProps<TopologyNoteData>) {
+type NoteNodeType = Node<TopologyNoteData, "note">;
+
+export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
   const updateNoteText = useTopologyStore((s) => s.updateNoteText);
   const updateNoteColor = useTopologyStore((s) => s.updateNoteColor);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
