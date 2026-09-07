@@ -12,28 +12,28 @@ export type NodeCategory =
   | "ai"
   | "integrations";
 
-export interface TopologyNodeData {
+export interface TopologyNodeData extends Record<string, unknown> {
   componentId: string;
   label: string;
   category: NodeCategory;
   capacity?: number;
 }
 
-export type EdgeStyle = "sync" | "async";
-export type EdgeDirection = "forward" | "bidirectional" | "none";
+export interface TopologyGroupData extends Record<string, unknown> {
+  label: string;
+  color: string;
+}
 
-export interface TopologyEdgeData {
+export interface TopologyNoteData extends Record<string, unknown> {
+  text: string;
+  color: string;
+}
+
+export interface TopologyEdgeData extends Record<string, unknown> {
   label?: string;
   style: EdgeStyle;
   direction: EdgeDirection;
 }
 
-export interface TopologyGroupData {
-  label: string;
-  color: string;
-}
-
-export interface TopologyNoteData {
-  text: string;
-  color: string;
-}
+export type EdgeStyle = "sync" | "async";
+export type EdgeDirection = "forward" | "bidirectional" | "none";
