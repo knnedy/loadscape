@@ -37,13 +37,16 @@ function markersForDirection(direction: EdgeDirection) {
   };
 }
 
+type AppNode = Node<TopologyNodeData | TopologyGroupData | TopologyNoteData>;
+type AppEdge = Edge<TopologyEdgeData>;
+
 export interface TopologyState {
-  nodes: Node<TopologyNodeData | TopologyGroupData | TopologyNoteData>[];
-  edges: Edge<TopologyEdgeData>[];
+  nodes: AppNode[];
+  edges: AppEdge[];
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
-  onNodesChange: (changes: NodeChange[]) => void;
-  onEdgesChange: (changes: EdgeChange[]) => void;
+  onNodesChange: (changes: NodeChange<AppNode>[]) => void;
+  onEdgesChange: (changes: EdgeChange<AppEdge>[]) => void;
   onConnect: (connection: Connection) => void;
   addComponent: (component: ComponentDef) => void;
   selectNode: (id: string | null) => void;
@@ -90,18 +93,18 @@ export function createTopologyStore() {
     selectedNodeId: null,
     selectedEdgeId: null,
     onNodesChange: (changes) =>
-      set({ nodes: applyNodeChanges(changes, get().nodes) }),
+      set({ nodes: applyNodeChanges<AppNode>(changes, get().nodes) }),
     onEdgesChange: (changes) =>
-      set({ edges: applyEdgeChanges(changes, get().edges) }),
+      set({ edges: applyEdgeChanges<AppEdge>(changes, get().edges) }),
     onConnect: (connection) => {
-      const newEdge: Edge<TopologyEdgeData> = {
+      const newEdge: AppEdge = {
         ...connection,
         id: `edge-${connection.source}-${connection.target}-${Date.now()}`,
         type: "component",
         data: { style: "sync", direction: "forward" },
         ...markersForDirection("forward"),
-      } as Edge<TopologyEdgeData>;
-      set({ edges: addEdge(newEdge, get().edges) });
+      } as AppEdge;
+      set({ edges: addEdge<AppEdge>(newEdge, get().edges) });
     },
     addComponent: (component) => {
       nodeIdCounter += 1;
