@@ -1,4 +1,4 @@
-import { MarkerType, type Node, type Edge } from "reactflow";
+import { MarkerType, type Node, type Edge } from "@xyflow/react";
 import type { TopologyNodeData, TopologyEdgeData } from "@/lib/types/topology";
 
 export const fixtureNodes: Node<TopologyNodeData>[] = [

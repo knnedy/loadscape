@@ -6,7 +6,7 @@ import {
   EdgeLabelRenderer,
   getSmoothStepPath,
   type EdgeProps,
-} from "reactflow";
+} from "@xyflow/react";
 import type { TopologyEdgeData } from "@/lib/types/topology";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 

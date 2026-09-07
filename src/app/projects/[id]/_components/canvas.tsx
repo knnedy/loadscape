@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import ReactFlow, {
+import {
+  ReactFlow,
   Background,
   BackgroundVariant,
   Controls,
@@ -11,7 +12,7 @@ import ReactFlow, {
   type Connection,
   type Edge,
   type Node,
-} from "reactflow";
+} from "@xyflow/react";
 import { ComponentNode } from "@/components/nodes/component-node";
 import { GroupNode } from "@/components/nodes/group-node";
 import { NoteNode } from "@/components/nodes/note-node";

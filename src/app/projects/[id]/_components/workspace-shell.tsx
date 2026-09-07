@@ -5,7 +5,7 @@ import { CanvasToolbar } from "./canvas-toolbar";
 import { Canvas } from "./canvas";
 import { ConfigPanel } from "./config-panel";
 import { TopologyProvider } from "../_store/topology-provider";
-import { ReactFlowProvider } from "reactflow";
+import { ReactFlowProvider } from "@xyflow/react";
 
 export function WorkspaceShell({ projectName }: { projectName: string }) {
   return (

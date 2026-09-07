@@ -4,12 +4,13 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   MarkerType,
+  reconnectEdge,
   type Node,
   type Edge,
   type Connection,
   type NodeChange,
   type EdgeChange,
-} from "reactflow";
+} from "@xyflow/react";
 import type {
   TopologyNodeData,
   TopologyEdgeData,
@@ -19,7 +20,6 @@ import type {
 } from "@/lib/types/topology";
 import { fixtureNodes, fixtureEdges } from "@/lib/simulation/fixtures";
 import type { ComponentDef } from "@/lib/catalog/components";
-import { reconnectEdge } from "reactflow";
 import type { TopologyGroupData } from "@/lib/types/topology";
 import { groupColorPalette } from "@/lib/catalog/group-colors";
 import { componentCatalog } from "@/lib/catalog/components";

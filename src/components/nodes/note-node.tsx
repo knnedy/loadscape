@@ -1,6 +1,6 @@
 "use client";
 
-import { NodeResizer, type NodeProps } from "reactflow";
+import { NodeResizer, type NodeProps } from "@xyflow/react";
 import { X } from "lucide-react";
 import {
   Popover,

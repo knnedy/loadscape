@@ -1,5 +1,5 @@
 import ELK from "elkjs/lib/elk.bundled.js";
-import type { Node, Edge } from "reactflow";
+import type { Node, Edge } from "@xyflow/react";
 import type {
   TopologyNodeData,
   TopologyGroupData,
