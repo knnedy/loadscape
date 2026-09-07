@@ -37,8 +37,10 @@ function markersForDirection(direction: EdgeDirection) {
   };
 }
 
-type AppNode = Node<TopologyNodeData | TopologyGroupData | TopologyNoteData>;
-type AppEdge = Edge<TopologyEdgeData>;
+export type AppNode = Node<
+  TopologyNodeData | TopologyGroupData | TopologyNoteData
+>;
+export type AppEdge = Edge<TopologyEdgeData>;
 
 export interface TopologyState {
   nodes: AppNode[];
