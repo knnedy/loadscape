@@ -16,12 +16,14 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { categories, componentCatalog } from "@/lib/catalog/components";
-import { useTopologyStore } from "../_store/topology-provider";
+import {
+  useTopologyStore,
+  useTopologyTemporalStore,
+} from "../_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
 import { Map } from "lucide-react";
-import { LayoutTemplate } from "lucide-react";
+import { LayoutTemplate, Wand2, Undo2, Redo2 } from "lucide-react";
 import { templates } from "@/lib/catalog/templates";
-import { Wand2 } from "lucide-react";
 
 export function CanvasToolbar() {
   const addComponent = useTopologyStore((s) => s.addComponent);
@@ -31,6 +33,9 @@ export function CanvasToolbar() {
   const insertTemplate = useTopologyStore((s) => s.insertTemplate);
   const addNote = useTopologyStore((s) => s.addNote);
   const tidyLayout = useTopologyStore((s) => s.tidyLayout);
+  const { undo, redo, pastStates, futureStates } = useTopologyTemporalStore(
+    (s) => s,
+  );
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -90,6 +95,21 @@ export function CanvasToolbar() {
           </Command>
         </PopoverContent>
       </Popover>
+      <div className="my-1 h-px w-6 bg-border" />
+      <button
+        title="Undo"
+        onClick={() => undo()}
+        disabled={pastStates.length === 0}
+        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30">
+        <Undo2 size={17} />
+      </button>
+      <button
+        title="Redo"
+        onClick={() => redo()}
+        disabled={futureStates.length === 0}
+        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30">
+        <Redo2 size={17} />
+      </button>
       <div className="my-1 h-px w-6 bg-border" />
       <button
         title="Add group"
