@@ -30,3 +30,20 @@ export function useTopologyStore<T>(selector: (state: TopologyState) => T): T {
   }
   return useStore(store, selector);
 }
+
+export function useTopologyTemporalStore<T>(
+  selector: (state: {
+    undo: () => void;
+    redo: () => void;
+    pastStates: unknown[];
+    futureStates: unknown[];
+  }) => T,
+): T {
+  const store = useContext(TopologyStoreContext);
+  if (!store) {
+    throw new Error(
+      "useTopologyTemporalStore must be used within a TopologyProvider",
+    );
+  }
+  return useStore(store.temporal, selector);
+}
