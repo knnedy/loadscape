@@ -25,7 +25,10 @@ import { groupColorPalette } from "@/lib/catalog/group-colors";
 import { componentCatalog } from "@/lib/catalog/components";
 import { Template } from "@/lib/catalog/templates";
 import { tidyLayout } from "@/lib/layout";
+import { throttle } from "@/lib/utils";
 import { temporal } from "zundo";
+
+const HISTORY_THROTTLE_MS = 300;
 
 function markersForDirection(direction: EdgeDirection) {
   const arrow = { type: MarkerType.ArrowClosed };
@@ -377,6 +380,10 @@ export function createTopologyStore() {
       {
         limit: 50,
         partialize: (state) => ({ nodes: state.nodes, edges: state.edges }),
+        handleSet: (handleSet) =>
+          throttle((state: Parameters<typeof handleSet>[0]) => {
+            handleSet(state);
+          }, HISTORY_THROTTLE_MS),
       },
     ),
   );
