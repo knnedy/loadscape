@@ -25,10 +25,11 @@ import { groupColorPalette } from "@/lib/catalog/group-colors";
 import { componentCatalog } from "@/lib/catalog/components";
 import { Template } from "@/lib/catalog/templates";
 import { tidyLayout } from "@/lib/layout";
-import { throttle } from "@/lib/utils";
 import { temporal } from "zundo";
 
-const HISTORY_THROTTLE_MS = 300;
+// Shared with the canvas's drag-checkpoint logic, so both sides agree on
+// how many history entries to retain.
+export const HISTORY_LIMIT = 50;
 
 function markersForDirection(direction: EdgeDirection) {
   const arrow = { type: MarkerType.ArrowClosed };
@@ -92,18 +93,43 @@ export function createTopologyStore() {
   let nodeIdCounter = 0;
   let groupIdCounter = 0;
   let noteIdCounter = 0;
+  // Self-reference so actions defined inside this closure can reach
+  // `.temporal` (pause/resume) on the store that wraps them. Assigned
+  // right after createStore() returns, below — safe because these
+  // actions only ever run later, on user interaction.
+  let storeRef!: TopologyStore;
 
-  return createStore<TopologyState>()(
+  const store = createStore<TopologyState>()(
     temporal(
       (set, get) => ({
         nodes: fixtureNodes,
         edges: fixtureEdges,
         selectedNodeId: null,
         selectedEdgeId: null,
-        onNodesChange: (changes) =>
-          set({ nodes: applyNodeChanges<AppNode>(changes, get().nodes) }),
-        onEdgesChange: (changes) =>
-          set({ edges: applyEdgeChanges<AppEdge>(changes, get().edges) }),
+        onNodesChange: (changes) => {
+          // Pure selection or React-Flow-internal dimension reports carry
+          // no meaningful diagram change — don't let them eat an undo step.
+          const cosmeticOnly = changes.every(
+            (c) => c.type === "select" || c.type === "dimensions",
+          );
+          const wasTracking = cosmeticOnly
+            ? storeRef.temporal.getState().isTracking
+            : false;
+          if (cosmeticOnly && wasTracking) storeRef.temporal.getState().pause();
+          set({ nodes: applyNodeChanges<AppNode>(changes, get().nodes) });
+          if (cosmeticOnly && wasTracking)
+            storeRef.temporal.getState().resume();
+        },
+        onEdgesChange: (changes) => {
+          const cosmeticOnly = changes.every((c) => c.type === "select");
+          const wasTracking = cosmeticOnly
+            ? storeRef.temporal.getState().isTracking
+            : false;
+          if (cosmeticOnly && wasTracking) storeRef.temporal.getState().pause();
+          set({ edges: applyEdgeChanges<AppEdge>(changes, get().edges) });
+          if (cosmeticOnly && wasTracking)
+            storeRef.temporal.getState().resume();
+        },
         onConnect: (connection) => {
           const newEdge: AppEdge = {
             ...connection,
@@ -378,13 +404,15 @@ export function createTopologyStore() {
         },
       }),
       {
-        limit: 50,
+        limit: HISTORY_LIMIT,
         partialize: (state) => ({ nodes: state.nodes, edges: state.edges }),
-        handleSet: (handleSet) =>
-          throttle((state: Parameters<typeof handleSet>[0]) => {
-            handleSet(state);
-          }, HISTORY_THROTTLE_MS),
+        // No handleSet override — default (untamed) push. Drag-gesture
+        // coalescing is handled explicitly by the canvas via pause/resume
+        // and a single manual checkpoint, not by timing.
       },
     ),
   );
+
+  storeRef = store;
+  return store;
 }
