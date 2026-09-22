@@ -17,8 +17,15 @@ import { GroupNode } from "@/components/nodes/group-node";
 import { NoteNode } from "@/components/nodes/note-node";
 import { ComponentEdge } from "@/components/edges/component-edge";
 import { isConnectionValid } from "@/lib/topology-validation";
-import { useTopologyStore } from "../_store/topology-provider";
-import type { AppNode, AppEdge } from "../_store/topology-store";
+import {
+  useTopologyStore,
+  useTopologyStoreApi,
+} from "../_store/topology-provider";
+import {
+  HISTORY_LIMIT,
+  type AppNode,
+  type AppEdge,
+} from "../_store/topology-store";
 
 export function Canvas() {
   const nodes = useTopologyStore((s) => s.nodes);
@@ -36,6 +43,7 @@ export function Canvas() {
   const duplicateNode = useTopologyStore((s) => s.duplicateNode);
   const reparentNode = useTopologyStore((s) => s.reparentNode);
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
+  const storeApi = useTopologyStoreApi();
 
   const nodeTypes = useMemo(
     () => ({
@@ -75,18 +83,58 @@ export function Canvas() {
     [deleteEdge],
   );
 
+  // --- drag-gesture history checkpointing ---
+  // A drag fires dozens of position ticks. We snapshot nodes/edges once at
+  // gesture start and pause zundo for the whole gesture — including any
+  // reparenting onNodeDragStop does on drop — then push exactly one
+  // history entry when the gesture ends. The gesture (pointerdown to
+  // pointerup) is the undo boundary, not a timer.
+  const dragSnapshotRef = useRef<{ nodes: AppNode[]; edges: AppEdge[] } | null>(
+    null,
+  );
+
+  const beginDragCheckpoint = useCallback(() => {
+    if (dragSnapshotRef.current) return; // gesture already tracked
+    dragSnapshotRef.current = {
+      nodes: storeApi.getState().nodes,
+      edges: storeApi.getState().edges,
+    };
+    storeApi.temporal.getState().pause();
+  }, [storeApi]);
+
+  const commitDragCheckpoint = useCallback(() => {
+    const snapshot = dragSnapshotRef.current;
+    dragSnapshotRef.current = null;
+    if (!snapshot) return;
+
+    const current = storeApi.getState();
+    const unchanged =
+      JSON.stringify(snapshot.nodes) === JSON.stringify(current.nodes) &&
+      JSON.stringify(snapshot.edges) === JSON.stringify(current.edges);
+
+    storeApi.temporal.getState().resume();
+    if (unchanged) return; // click without a real move — no undo step
+
+    storeApi.temporal.setState((s) => ({
+      pastStates: [...s.pastStates, snapshot].slice(-HISTORY_LIMIT),
+      futureStates: [],
+    }));
+  }, [storeApi]);
+
   const onNodeDragStop = useCallback(
     (_: unknown, node: AppNode) => {
-      if (node.type === "group-container") return;
-      const overlappingGroup = getIntersectingNodes(node).find(
-        (n) => n.type === "group-container",
-      );
-      const internalNode = getInternalNode(node.id);
-      const absolutePosition =
-        internalNode?.internals.positionAbsolute ?? node.position;
-      reparentNode(node.id, overlappingGroup?.id ?? null, absolutePosition);
+      if (node.type !== "group-container") {
+        const overlappingGroup = getIntersectingNodes(node).find(
+          (n) => n.type === "group-container",
+        );
+        const internalNode = getInternalNode(node.id);
+        const absolutePosition =
+          internalNode?.internals.positionAbsolute ?? node.position;
+        reparentNode(node.id, overlappingGroup?.id ?? null, absolutePosition);
+      }
+      commitDragCheckpoint();
     },
-    [getIntersectingNodes, getInternalNode, reparentNode],
+    [getIntersectingNodes, getInternalNode, reparentNode, commitDragCheckpoint],
   );
 
   useEffect(() => {
@@ -122,7 +170,10 @@ export function Canvas() {
         onReconnect={onEdgeUpdate}
         onReconnectStart={onEdgeUpdateStart}
         onReconnectEnd={onEdgeUpdateEnd}
+        onNodeDragStart={beginDragCheckpoint}
         onNodeDragStop={onNodeDragStop}
+        onSelectionDragStart={beginDragCheckpoint}
+        onSelectionDragStop={commitDragCheckpoint}
         onNodeClick={(_, node) => selectNode(node.id)}
         onEdgeClick={(_, edge) => selectEdge(edge.id)}
         onPaneClick={() => {
