@@ -89,28 +89,22 @@
   --crit: oklch(0.597 0.186 26.1);
   --canvas-dot: oklch(0.75 0.01 245);
 
-  /* transport */
   --cat-client: oklch(0.56 0.07 248);
   --cat-networking: oklch(0.6 0.13 234);
 
-  /* compute */
   --cat-compute: oklch(0.55 0.16 295);
   --cat-ai: oklch(0.6 0.18 308);
 
-  /* persistence — one warm band, evenly spaced by hue */
-  --cat-cache: oklch(0.63 0.15 55);
-  --cat-database: oklch(0.62 0.14 72);
-  --cat-storage: oklch(0.6 0.13 88);
-  --cat-search: oklch(0.6 0.12 102);
+  --cat-cache: oklch(0.66 0.16 48);
+  --cat-database: oklch(0.62 0.13 75);
+  --cat-storage: oklch(0.6 0.11 100);
+  --cat-search: oklch(0.62 0.13 125);
 
-  /* coordination */
   --cat-messaging: oklch(0.6 0.18 350);
 
-  /* trust — shared hue, auth assertive / monitoring recedes */
   --cat-auth: oklch(0.58 0.19 25);
   --cat-monitoring: oklch(0.5 0.055 25);
 
-  /* external */
   --cat-integrations: oklch(0.54 0.09 270);
 
   --chart-1: oklch(0.87 0 0);
@@ -153,28 +147,22 @@
   --crit: oklch(0.657 0.173 23.1);
   --canvas-dot: oklch(0.32 0.015 250);
 
-  /* transport */
   --cat-client: oklch(0.68 0.06 248);
   --cat-networking: oklch(0.745 0.113 233);
 
-  /* compute */
   --cat-compute: oklch(0.7 0.15 295);
   --cat-ai: oklch(0.72 0.17 308);
 
-  /* persistence — one warm band, evenly spaced by hue */
-  --cat-cache: oklch(0.75 0.14 55);
-  --cat-database: oklch(0.74 0.13 72);
-  --cat-storage: oklch(0.72 0.12 88);
-  --cat-search: oklch(0.72 0.11 102);
+  --cat-cache: oklch(0.76 0.15 48);
+  --cat-database: oklch(0.73 0.13 75);
+  --cat-storage: oklch(0.71 0.11 100);
+  --cat-search: oklch(0.73 0.12 125);
 
-  /* coordination */
   --cat-messaging: oklch(0.72 0.17 350);
 
-  /* trust — shared hue, auth assertive / monitoring recedes */
   --cat-auth: oklch(0.68 0.18 25);
   --cat-monitoring: oklch(0.62 0.045 25);
 
-  /* external */
   --cat-integrations: oklch(0.66 0.08 270);
 
   --chart-1: oklch(0.87 0 0);
