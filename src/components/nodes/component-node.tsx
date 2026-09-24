@@ -54,9 +54,12 @@ export function ComponentNode({
         isCapsule
           ? "items-center justify-center rounded-full px-5 py-2.5"
           : "gap-2 rounded-xl px-3 py-2.5"
-      } ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+      }`}
       style={{
         border: `2px solid ${catColor}`,
+        boxShadow: selected
+          ? "0 0 0 3px color-mix(in oklch, var(--primary) 45%, transparent)"
+          : undefined,
         width: isCapsule ? undefined : 160,
         minWidth: isCapsule ? 110 : undefined,
       }}>
