@@ -8,7 +8,7 @@ import {
   type Edge,
   type EdgeProps,
 } from "@xyflow/react";
-import type { TopologyEdgeData } from "@/lib/types/topology";
+import type { TopologyEdgeData, TopologyNodeData } from "@/lib/types/topology";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 
 type ComponentEdgeType = Edge<TopologyEdgeData, "component">;
@@ -30,6 +30,7 @@ export function ComponentEdge({
 }: EdgeProps<ComponentEdgeType>) {
   const updateEdgeLabel = useTopologyStore((s) => s.updateEdgeLabel);
   const allEdges = useTopologyStore((s) => s.edges);
+  const nodes = useTopologyStore((s) => s.nodes);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data?.label ?? "");
 
@@ -55,6 +56,15 @@ export function ComponentEdge({
 
   const isAsync = data?.style === "async";
 
+  const sourceNode = nodes.find((n) => n.id === source);
+  const sourceCategory =
+    sourceNode && "category" in sourceNode.data
+      ? (sourceNode.data as TopologyNodeData).category
+      : undefined;
+  const edgeColor = sourceCategory
+    ? `var(--cat-${sourceCategory})`
+    : "var(--border-strong)";
+
   function commit() {
     updateEdgeLabel(id, draft.trim());
     setEditing(false);
@@ -67,11 +77,7 @@ export function ComponentEdge({
         markerStart={markerStart}
         markerEnd={markerEnd}
         style={{
-          stroke: selected
-            ? "var(--primary)"
-            : isAsync
-              ? "var(--edge-async)"
-              : "var(--edge-sync)",
+          stroke: selected ? "var(--primary)" : edgeColor,
           strokeWidth: selected ? 2 : 1.5,
           strokeDasharray: isAsync ? "6 4" : undefined,
         }}
