@@ -15,33 +15,130 @@ import {
 } from "lucide-react";
 import type { NodeCategory } from "@/lib/types/topology";
 
+export type CategoryFamily =
+  | "transport"
+  | "compute"
+  | "persistence"
+  | "coordination"
+  | "trust"
+  | "external";
+
 export interface ComponentDef {
   id: string;
   label: string;
   category: NodeCategory;
   group?: string;
   icon: string;
+  /** Static tech-level fact (e.g. "LRU eviction"), not config- or sim-derived */
+  annotation?: string;
 }
 
 export interface CategoryDef {
   category: NodeCategory;
   label: string;
   icon: LucideIcon;
+  family: CategoryFamily;
+  shape: "capsule" | "rect";
+  defaultAnnotation: string;
 }
 
 export const categories: CategoryDef[] = [
-  { category: "client", label: "Client", icon: Users },
-  { category: "networking", label: "Networking", icon: Network },
-  { category: "compute", label: "Compute", icon: Server },
-  { category: "database", label: "Database", icon: Database },
-  { category: "cache", label: "Cache", icon: Zap },
-  { category: "messaging", label: "Messaging", icon: MessageSquare },
-  { category: "auth", label: "Auth", icon: Lock },
-  { category: "storage", label: "Storage", icon: HardDrive },
-  { category: "search", label: "Search", icon: Search },
-  { category: "monitoring", label: "Monitoring", icon: Activity },
-  { category: "ai", label: "AI & ML", icon: Brain },
-  { category: "integrations", label: "Integrations", icon: Cable },
+  {
+    category: "client",
+    label: "Client",
+    icon: Users,
+    family: "transport",
+    shape: "capsule",
+    defaultAnnotation: "originates traffic",
+  },
+  {
+    category: "networking",
+    label: "Networking",
+    icon: Network,
+    family: "transport",
+    shape: "rect",
+    defaultAnnotation: "routes traffic",
+  },
+  {
+    category: "compute",
+    label: "Compute",
+    icon: Server,
+    family: "compute",
+    shape: "rect",
+    defaultAnnotation: "processes requests",
+  },
+  {
+    category: "database",
+    label: "Database",
+    icon: Database,
+    family: "persistence",
+    shape: "rect",
+    defaultAnnotation: "persists state",
+  },
+  {
+    category: "cache",
+    label: "Cache",
+    icon: Zap,
+    family: "persistence",
+    shape: "rect",
+    defaultAnnotation: "ephemeral, fast",
+  },
+  {
+    category: "messaging",
+    label: "Messaging",
+    icon: MessageSquare,
+    family: "coordination",
+    shape: "rect",
+    defaultAnnotation: "decouples flow",
+  },
+  {
+    category: "auth",
+    label: "Auth",
+    icon: Lock,
+    family: "trust",
+    shape: "rect",
+    defaultAnnotation: "gatekeeps access",
+  },
+  {
+    category: "storage",
+    label: "Storage",
+    icon: HardDrive,
+    family: "persistence",
+    shape: "rect",
+    defaultAnnotation: "stores blobs",
+  },
+  {
+    category: "search",
+    label: "Search",
+    icon: Search,
+    family: "persistence",
+    shape: "rect",
+    defaultAnnotation: "indexes for query",
+  },
+  {
+    category: "monitoring",
+    label: "Monitoring",
+    icon: Activity,
+    family: "trust",
+    shape: "rect",
+    defaultAnnotation: "observes the system",
+  },
+  {
+    category: "ai",
+    label: "AI & ML",
+    icon: Brain,
+    family: "compute",
+    shape: "rect",
+    defaultAnnotation: "runs inference",
+  },
+  {
+    category: "integrations",
+    label: "Integrations",
+    icon: Cable,
+    family: "external",
+    shape: "rect",
+    defaultAnnotation: "external, no capacity",
+  },
 ];
 
 export const componentCatalog: ComponentDef[] = [
@@ -82,6 +179,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "networking",
     group: "Load balancing",
     icon: "lucide:scale",
+    annotation: "round robin",
   },
   {
     id: "aws-alb",
@@ -89,6 +187,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "networking",
     group: "Load balancing",
     icon: "logos:aws",
+    annotation: "least outstanding requests",
   },
   {
     id: "cloudflare-lb",
@@ -110,6 +209,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "networking",
     group: "Load balancing",
     icon: "lucide:scale",
+    annotation: "least connections",
   },
 
   // CDN & edge
@@ -119,6 +219,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "networking",
     group: "CDN & edge",
     icon: "lucide:globe",
+    annotation: "caches at the edge",
   },
   {
     id: "aws-cloudfront",
@@ -196,6 +297,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "compute",
     group: "Serverless",
     icon: "lucide:cloud-lightning",
+    annotation: "cold starts",
   },
   {
     id: "aws-lambda",
@@ -203,6 +305,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "compute",
     group: "Serverless",
     icon: "logos:aws-lambda",
+    annotation: "cold starts",
   },
   {
     id: "cloudflare-workers",
@@ -210,6 +313,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "compute",
     group: "Serverless",
     icon: "logos:cloudflare-icon",
+    annotation: "no cold starts",
   },
   {
     id: "vercel-functions",
@@ -233,6 +337,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "compute",
     group: "Containers & platforms",
     icon: "logos:kubernetes",
+    annotation: "horizontally scalable",
   },
   {
     id: "docker",
@@ -301,6 +406,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "Postgres-compatible",
     icon: "logos:postgresql",
+    annotation: "ACID, single writer",
   },
   {
     id: "neon",
@@ -308,6 +414,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "Postgres-compatible",
     icon: "logos:neon-icon",
+    annotation: "serverless, branchable",
   },
   {
     id: "supabase",
@@ -324,6 +431,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "MySQL-compatible",
     icon: "logos:mysql",
+    annotation: "ACID, single writer",
   },
   {
     id: "planetscale",
@@ -331,6 +439,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "MySQL-compatible",
     icon: "logos:planetscale-icon",
+    annotation: "online schema changes",
   },
 
   // NoSQL & Edge
@@ -340,6 +449,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "NoSQL",
     icon: "logos:mongodb-icon",
+    annotation: "eventually consistent",
   },
   {
     id: "dynamodb",
@@ -347,6 +457,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "NoSQL",
     icon: "logos:aws-dynamodb",
+    annotation: "auto-scales throughput",
   },
   {
     id: "cassandra",
@@ -354,6 +465,7 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "NoSQL",
     icon: "logos:apache-cassandra",
+    annotation: "no single point of failure",
   },
   {
     id: "sqlite-turso",
@@ -361,27 +473,37 @@ export const componentCatalog: ComponentDef[] = [
     category: "database",
     group: "Edge & Embedded",
     icon: "lucide:database",
+    annotation: "embedded, edge-replicated",
   },
 
   // --- Cache ---
-  { id: "redis", label: "Redis", category: "cache", icon: "logos:redis" },
+  {
+    id: "redis",
+    label: "Redis",
+    category: "cache",
+    icon: "logos:redis",
+    annotation: "LRU eviction",
+  },
   {
     id: "upstash-redis",
     label: "Upstash Redis",
     category: "cache",
     icon: "logos:upstash-icon",
+    annotation: "LRU eviction",
   },
   {
     id: "memcached",
     label: "Memcached",
     category: "cache",
     icon: "lucide:database",
+    annotation: "no persistence",
   },
   {
     id: "cloudflare-kv",
     label: "Cloudflare KV",
     category: "cache",
     icon: "logos:cloudflare-icon",
+    annotation: "eventually consistent",
   },
 
   // --- Messaging ---
@@ -390,15 +512,29 @@ export const componentCatalog: ComponentDef[] = [
     label: "Kafka",
     category: "messaging",
     icon: "logos:kafka-icon",
+    annotation: "ordered per partition",
   },
   {
     id: "rabbitmq",
     label: "RabbitMQ",
     category: "messaging",
     icon: "logos:rabbitmq-icon",
+    annotation: "AMQP broker",
   },
-  { id: "sqs", label: "AWS SQS", category: "messaging", icon: "logos:aws-sqs" },
-  { id: "sns", label: "AWS SNS", category: "messaging", icon: "logos:aws-sns" },
+  {
+    id: "sqs",
+    label: "AWS SQS",
+    category: "messaging",
+    icon: "logos:aws-sqs",
+    annotation: "at-least-once delivery",
+  },
+  {
+    id: "sns",
+    label: "AWS SNS",
+    category: "messaging",
+    icon: "logos:aws-sns",
+    annotation: "fan-out pub/sub",
+  },
   {
     id: "eventbridge",
     label: "AWS EventBridge",
@@ -410,6 +546,7 @@ export const componentCatalog: ComponentDef[] = [
     label: "Google Pub/Sub",
     category: "messaging",
     icon: "logos:google-cloud",
+    annotation: "at-least-once delivery",
   },
 
   // --- Auth ---
@@ -438,6 +575,7 @@ export const componentCatalog: ComponentDef[] = [
     label: "Custom JWT Server",
     category: "auth",
     icon: "lucide:lock",
+    annotation: "stateless tokens",
   },
 
   // --- Storage ---
@@ -446,12 +584,14 @@ export const componentCatalog: ComponentDef[] = [
     label: "S3 / Object Storage",
     category: "storage",
     icon: "logos:aws-s3",
+    annotation: "eventually consistent",
   },
   {
     id: "cloudflare-r2",
     label: "Cloudflare R2",
     category: "storage",
     icon: "logos:cloudflare-icon",
+    annotation: "no egress fees",
   },
   {
     id: "gcs",
@@ -472,12 +612,14 @@ export const componentCatalog: ComponentDef[] = [
     label: "Elasticsearch",
     category: "search",
     icon: "logos:elasticsearch",
+    annotation: "eventually consistent",
   },
   {
     id: "algolia",
     label: "Algolia",
     category: "search",
     icon: "logos:algolia",
+    annotation: "hosted, low-latency",
   },
   {
     id: "meilisearch",
@@ -504,6 +646,7 @@ export const componentCatalog: ComponentDef[] = [
     label: "Prometheus",
     category: "monitoring",
     icon: "logos:prometheus",
+    annotation: "pull-based scraping",
   },
   {
     id: "sentry",
@@ -524,6 +667,7 @@ export const componentCatalog: ComponentDef[] = [
     label: "OpenAI API",
     category: "ai",
     icon: "logos:openai-icon",
+    annotation: "external, rate-limited",
   },
   {
     id: "huggingface",
@@ -536,6 +680,7 @@ export const componentCatalog: ComponentDef[] = [
     label: "Pinecone (Vector DB)",
     category: "ai",
     icon: "lucide:database",
+    annotation: "approximate nearest-neighbor",
   },
 
   // --- Integrations / Third-Party ---
@@ -580,4 +725,17 @@ export function groupedComponentsByCategory(
     groups.get(key)!.push(item);
   }
   return groups;
+}
+
+export function getCategoryDef(category: NodeCategory): CategoryDef {
+  const def = categories.find((c) => c.category === category);
+  if (!def) throw new Error(`Unknown category: ${category}`);
+  return def;
+}
+
+/** Resolves the annotation to show for a component: its own override, or the category default. */
+export function getAnnotation(component: ComponentDef): string {
+  return (
+    component.annotation ?? getCategoryDef(component.category).defaultAnnotation
+  );
 }
