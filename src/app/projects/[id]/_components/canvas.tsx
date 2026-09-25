@@ -83,18 +83,12 @@ export function Canvas() {
     [deleteEdge],
   );
 
-  // --- drag-gesture history checkpointing ---
-  // A drag fires dozens of position ticks. We snapshot nodes/edges once at
-  // gesture start and pause zundo for the whole gesture — including any
-  // reparenting onNodeDragStop does on drop — then push exactly one
-  // history entry when the gesture ends. The gesture (pointerdown to
-  // pointerup) is the undo boundary, not a timer.
   const dragSnapshotRef = useRef<{ nodes: AppNode[]; edges: AppEdge[] } | null>(
     null,
   );
 
   const beginDragCheckpoint = useCallback(() => {
-    if (dragSnapshotRef.current) return; // gesture already tracked
+    if (dragSnapshotRef.current) return;
     dragSnapshotRef.current = {
       nodes: storeApi.getState().nodes,
       edges: storeApi.getState().edges,
@@ -113,7 +107,7 @@ export function Canvas() {
       JSON.stringify(snapshot.edges) === JSON.stringify(current.edges);
 
     storeApi.temporal.getState().resume();
-    if (unchanged) return; // click without a real move — no undo step
+    if (unchanged) return;
 
     storeApi.temporal.setState((s) => ({
       pastStates: [...s.pastStates, snapshot].slice(-HISTORY_LIMIT),
@@ -184,6 +178,14 @@ export function Canvas() {
         fitViewOptions={{ maxZoom: 1, padding: 0.4 }}
         connectionMode={ConnectionMode.Loose}>
         <Background
+          id="grid-major"
+          variant={BackgroundVariant.Lines}
+          gap={120}
+          lineWidth={1}
+          color="color-mix(in oklch, var(--canvas-dot) 35%, transparent)"
+        />
+        <Background
+          id="grid-minor"
           variant={BackgroundVariant.Dots}
           gap={24}
           size={1.5}
