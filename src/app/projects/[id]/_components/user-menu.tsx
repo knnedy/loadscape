@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export function UserMenu() {
   return (
@@ -22,10 +21,6 @@ export function UserMenu() {
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
-        <div className="px-1 py-1">
-          <ThemeToggle />
-        </div>
-        <DropdownMenuSeparator />
         <DropdownMenuItem className="gap-2 text-sm">
           <Settings size={14} />
           Settings
