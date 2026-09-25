@@ -80,6 +80,9 @@ export function ComponentEdge({
           stroke: selected ? "var(--primary)" : edgeColor,
           strokeWidth: selected ? 2 : 1.5,
           strokeDasharray: isAsync ? "6 4" : undefined,
+          filter: `drop-shadow(0 0 ${selected ? 4 : 2.5}px color-mix(in oklch, ${
+            selected ? "var(--primary)" : edgeColor
+          } ${selected ? 65 : 45}%, transparent))`,
         }}
       />
       <EdgeLabelRenderer>
