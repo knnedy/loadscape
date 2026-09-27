@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Frame, StickyNote } from "lucide-react";
+import {
+  Plus,
+  BoxSelect,
+  LayoutTemplate,
+  MessageSquareText,
+  Undo2,
+  Redo2,
+  PictureInPicture2,
+  Wand2,
+} from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -15,15 +24,21 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { categories, componentCatalog } from "@/lib/catalog/components";
 import {
   useTopologyStore,
   useTopologyTemporalStore,
 } from "../_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
-import { Map } from "lucide-react";
-import { LayoutTemplate, Wand2, Undo2, Redo2 } from "lucide-react";
 import { templates } from "@/lib/catalog/templates";
+
+const iconButtonClass =
+  "flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30";
 
 export function CanvasToolbar() {
   const addComponent = useTopologyStore((s) => s.addComponent);
@@ -44,7 +59,6 @@ export function CanvasToolbar() {
         e.preventDefault();
         setOpen((v) => !v);
       }
-
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         if (e.shiftKey) redo();
@@ -59,11 +73,18 @@ export function CanvasToolbar() {
   return (
     <aside className="absolute top-1/2 left-4 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          title="Add component (⌘K)"
-          className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
-          <Plus size={18} />
-        </PopoverTrigger>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <PopoverTrigger className={iconButtonClass}>
+                <Plus size={18} />
+              </PopoverTrigger>
+            }
+          />
+          <TooltipContent side="right">
+            Add component <kbd className="ml-1 opacity-70">⌘K</kbd>
+          </TooltipContent>
+        </Tooltip>
         <PopoverContent side="right" align="start" className="w-72 p-0">
           <Command>
             <CommandInput placeholder="Search components..." />
@@ -102,34 +123,26 @@ export function CanvasToolbar() {
           </Command>
         </PopoverContent>
       </Popover>
-      <div className="my-1 h-px w-6 bg-border" />
-      <button
-        title="Undo"
-        onClick={() => undo()}
-        disabled={pastStates.length === 0}
-        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30">
-        <Undo2 size={17} />
-      </button>
-      <button
-        title="Redo"
-        onClick={() => redo()}
-        disabled={futureStates.length === 0}
-        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30">
-        <Redo2 size={17} />
-      </button>
-      <div className="my-1 h-px w-6 bg-border" />
-      <button
-        title="Add group"
-        onClick={addGroup}
-        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
-        <Frame size={17} />
-      </button>
+
+      <Tooltip>
+        <TooltipTrigger onClick={addGroup} className={iconButtonClass}>
+          <BoxSelect size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">Add group</TooltipContent>
+      </Tooltip>
+
       <Popover>
-        <PopoverTrigger
-          title="Insert template"
-          className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground">
-          <LayoutTemplate size={17} />
-        </PopoverTrigger>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <PopoverTrigger
+                className={`${iconButtonClass} aria-expanded:bg-accent aria-expanded:text-accent-foreground`}>
+                <LayoutTemplate size={17} />
+              </PopoverTrigger>
+            }
+          />
+          <TooltipContent side="right">Insert template</TooltipContent>
+        </Tooltip>
         <PopoverContent side="right" align="start" className="w-64 p-1">
           <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
             Scenario templates
@@ -149,28 +162,63 @@ export function CanvasToolbar() {
           ))}
         </PopoverContent>
       </Popover>
-      <button
-        title="Add note"
-        onClick={addNote}
-        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
-        <StickyNote size={17} />
-      </button>
-      <button
-        title="Toggle minimap"
-        onClick={toggleMiniMap}
-        className={`flex h-9.5 w-9.5 items-center justify-center rounded-xl transition-colors ${
-          showMiniMap
-            ? "bg-accent text-accent-foreground"
-            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-        }`}>
-        <Map size={17} />
-      </button>
-      <button
-        title="Tidy up layout"
-        onClick={() => tidyLayout()}
-        className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
-        <Wand2 size={17} />
-      </button>
+
+      <Tooltip>
+        <TooltipTrigger onClick={addNote} className={iconButtonClass}>
+          <MessageSquareText size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">Add note</TooltipContent>
+      </Tooltip>
+
+      <div className="my-1 h-px w-6 bg-border" />
+
+      <Tooltip>
+        <TooltipTrigger
+          onClick={() => undo()}
+          disabled={pastStates.length === 0}
+          className={iconButtonClass}>
+          <Undo2 size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          Undo <kbd className="ml-1 opacity-70">⌘Z</kbd>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          onClick={() => redo()}
+          disabled={futureStates.length === 0}
+          className={iconButtonClass}>
+          <Redo2 size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          Redo <kbd className="ml-1 opacity-70">⇧⌘Z</kbd>
+        </TooltipContent>
+      </Tooltip>
+
+      <div className="my-1 h-px w-6 bg-border" />
+
+      <Tooltip>
+        <TooltipTrigger
+          onClick={toggleMiniMap}
+          className={`flex h-9.5 w-9.5 items-center justify-center rounded-xl transition-colors ${
+            showMiniMap
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          }`}>
+          <PictureInPicture2 size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">Toggle minimap</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          onClick={() => tidyLayout()}
+          className={iconButtonClass}>
+          <Wand2 size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">Tidy up layout</TooltipContent>
+      </Tooltip>
     </aside>
   );
 }
