@@ -35,12 +35,6 @@ export function useTopologyStore<T>(selector: (state: TopologyState) => T): T {
   return useStore(useTopologyStoreContext(), selector);
 }
 
-/**
- * Raw store handle for imperative access — getState()/setState() and the
- * zundo `.temporal` sub-store. Use this outside of reactive selectors,
- * example for pause()/resume() around a multi-tick gesture like a drag.
- * Prefer useTopologyStore for anything that should trigger a re-render.
- */
 export function useTopologyStoreApi(): TopologyStore {
   return useTopologyStoreContext();
 }
