@@ -1,7 +1,7 @@
 "use client";
 
 import { NodeResizer, type Node, type NodeProps } from "@xyflow/react";
-import { X } from "lucide-react";
+import { X, Check, StickyNote } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -34,25 +34,41 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
           backgroundColor: `color-mix(in oklch, ${data.color} 12%, var(--card))`,
         }}>
         <div className="mb-1 flex items-center justify-between">
-          <Popover>
-            <PopoverTrigger
-              className="nodrag h-3 w-3 shrink-0 rounded-full"
-              style={{ backgroundColor: data.color }}
+          <div className="flex items-center gap-1.5">
+            <StickyNote
+              size={11}
+              style={{ color: data.color }}
+              className="shrink-0"
             />
-            <PopoverContent
-              side="top"
-              align="start"
-              className="flex w-auto gap-1.5 p-2">
-              {groupColorPalette.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => updateNoteColor(id, color)}
-                  className="h-5 w-5 rounded-full transition-transform hover:scale-110"
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </PopoverContent>
-          </Popover>
+            <Popover>
+              <PopoverTrigger
+                className="nodrag h-3 w-3 shrink-0 rounded-full"
+                style={{ backgroundColor: data.color }}
+              />
+              <PopoverContent
+                side="top"
+                align="start"
+                className="flex w-auto gap-1.5 p-2">
+                {groupColorPalette.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => updateNoteColor(id, color)}
+                    className="relative flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
+                    style={{
+                      backgroundColor: color,
+                      boxShadow:
+                        color === data.color
+                          ? "0 0 0 2px var(--popover), 0 0 0 3.5px var(--foreground)"
+                          : undefined,
+                    }}>
+                    {color === data.color && (
+                      <Check size={11} className="text-white" strokeWidth={3} />
+                    )}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          </div>
           {selected && (
             <button
               onClick={(e) => {
