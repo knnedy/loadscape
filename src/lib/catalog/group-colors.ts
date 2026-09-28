@@ -1,5 +1,5 @@
 export const groupColorPalette = [
-  "#5AB8E8",
+  "#5A89E8",
   "#3DDC84",
   "#E8A93D",
   "#E85D9E",
