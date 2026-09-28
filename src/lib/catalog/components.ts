@@ -145,7 +145,7 @@ export const componentCatalog: ComponentDef[] = [
   // --- Client ---
   {
     id: "client",
-    label: "Client / Traffic Generator",
+    label: "Client",
     category: "client",
     icon: "lucide:users",
   },

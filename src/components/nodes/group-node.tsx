@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { NodeResizer, type Node, type NodeProps } from "@xyflow/react";
-import { X } from "lucide-react";
+import { X, Check } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -39,7 +39,7 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
         lineStyle={{ borderColor: "var(--primary)" }}
       />
       <div
-        className="h-full w-full rounded-xl border-2"
+        className="h-full w-full rounded-xl border-2 border-dashed"
         style={{
           borderColor: data.color,
           backgroundColor: `color-mix(in oklch, ${data.color} 7%, transparent)`,
@@ -59,9 +59,18 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
               <button
                 key={color}
                 onClick={() => updateGroupColor(id, color)}
-                className="h-5 w-5 rounded-full transition-transform hover:scale-110"
-                style={{ backgroundColor: color }}
-              />
+                className="relative flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
+                style={{
+                  backgroundColor: color,
+                  boxShadow:
+                    color === data.color
+                      ? "0 0 0 2px var(--popover), 0 0 0 3.5px var(--foreground)"
+                      : undefined,
+                }}>
+                {color === data.color && (
+                  <Check size={11} className="text-white" strokeWidth={3} />
+                )}
+              </button>
             ))}
           </PopoverContent>
         </Popover>
