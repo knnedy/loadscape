@@ -7,6 +7,7 @@ import { ConfigPanel } from "./config-panel";
 import { TopologyProvider } from "../_store/topology-provider";
 import { ReactFlowProvider } from "@xyflow/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { EmptyState } from "./empty-state";
 
 export function WorkspaceShell({ projectName }: { projectName: string }) {
   return (
@@ -18,6 +19,7 @@ export function WorkspaceShell({ projectName }: { projectName: string }) {
             <div className="relative flex-1 overflow-hidden">
               <ReactFlowProvider>
                 <Canvas />
+                <EmptyState />
                 <CanvasToolbar />
               </ReactFlowProvider>
             </div>

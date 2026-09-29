@@ -29,6 +29,10 @@ export function EmptyState() {
           <kbd className="rounded border border-border px-1 py-0.5 text-xs">
             ⌘K
           </kbd>{" "}
+          /{" "}
+          <kbd className="rounded border border-border px-1 py-0.5 text-xs">
+            Ctrl K
+          </kbd>{" "}
           to add your first component, or begin from a scenario.
         </p>
 
