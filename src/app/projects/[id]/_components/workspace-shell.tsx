@@ -18,8 +18,8 @@ export function WorkspaceShell({ projectName }: { projectName: string }) {
             <div className="relative flex-1 overflow-hidden">
               <ReactFlowProvider>
                 <Canvas />
+                <CanvasToolbar />
               </ReactFlowProvider>
-              <CanvasToolbar />
             </div>
             <ConfigPanel />
           </div>
