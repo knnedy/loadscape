@@ -7,6 +7,7 @@ import { ConfigPanel } from "./config-panel";
 import { TopologyProvider } from "../_store/topology-provider";
 import { ReactFlowProvider } from "@xyflow/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { StatsPanel } from "./stats-panel";
 import { EmptyState } from "./empty-state";
 
 export function WorkspaceShell({ projectName }: { projectName: string }) {
@@ -20,6 +21,7 @@ export function WorkspaceShell({ projectName }: { projectName: string }) {
               <ReactFlowProvider>
                 <Canvas />
                 <EmptyState />
+                <StatsPanel />
                 <CanvasToolbar />
               </ReactFlowProvider>
             </div>
