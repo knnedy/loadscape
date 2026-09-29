@@ -87,6 +87,7 @@ export interface TopologyState {
   tidyLayout: () => Promise<void>;
   deleteSelection: () => void;
   syncSelection: (nodeIds: string[], edgeIds: string[]) => void;
+  replaceTopology: (nodes: AppNode[], edges: AppEdge[]) => void;
 }
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
@@ -466,6 +467,18 @@ export function createTopologyStore() {
           if (nextNodeId === selectedNodeId && nextEdgeId === selectedEdgeId)
             return;
           set({ selectedNodeId: nextNodeId, selectedEdgeId: nextEdgeId });
+        },
+        replaceTopology: (nodes, edges) => {
+          // Imported ids may collide with freshly generated ones, so push
+          // every counter past the highest numeric suffix in the file.
+          const floor = nodes.reduce((max, n) => {
+            const match = /(\d+)$/.exec(n.id);
+            return match ? Math.max(max, Number(match[1])) : max;
+          }, 0);
+          nodeIdCounter = Math.max(nodeIdCounter, floor);
+          groupIdCounter = Math.max(groupIdCounter, floor);
+          noteIdCounter = Math.max(noteIdCounter, floor);
+          set({ nodes, edges, selectedNodeId: null, selectedEdgeId: null });
         },
       }),
       {
