@@ -85,6 +85,23 @@ export function ConfigPanel() {
             }
             className="font-mono"
           />
+          <div className="mt-1 flex gap-1.5">
+            {capacityPresets.map(({ label, value }) => (
+              <button
+                key={label}
+                onClick={() => updateNodeCapacity(node.id, value)}
+                className={`flex flex-1 flex-col items-center rounded-md border px-2 py-1 transition-colors ${
+                  data.capacity === value
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:bg-accent"
+                }`}>
+                <span className="text-xs">{label}</span>
+                <span className="font-mono text-[11px]">
+                  {value.toLocaleString("en-US")}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </aside>
     );
