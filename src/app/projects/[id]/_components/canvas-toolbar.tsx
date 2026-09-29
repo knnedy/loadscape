@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   Plus,
   BoxSelect,
@@ -11,6 +11,8 @@ import {
   PictureInPicture2,
   Wand2,
   ImageDown,
+  FileDown,
+  FileUp,
 } from "lucide-react";
 import {
   Popover,
@@ -33,13 +35,15 @@ import {
 import { categories, componentCatalog } from "@/lib/catalog/components";
 import {
   useTopologyStore,
+  useTopologyStoreApi,
   useTopologyTemporalStore,
 } from "../_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
 import { templates } from "@/lib/catalog/templates";
 import { useReactFlow } from "@xyflow/react";
 import { renderCanvasToPng } from "@/lib/export-image";
-import { downloadUrl } from "@/lib/download";
+import { downloadText, downloadUrl } from "@/lib/download";
+import { parseTopology, serializeTopology } from "../_lib/topology-io";
 
 const iconButtonClass =
   "flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30";
@@ -56,8 +60,12 @@ export function CanvasToolbar() {
     (s) => s,
   );
   const hasNodes = useTopologyStore((s) => s.nodes.length > 0);
+  const replaceTopology = useTopologyStore((s) => s.replaceTopology);
+
   const [open, setOpen] = useState(false);
-  const { getNodes, getNodesBounds } = useReactFlow();
+  const { getNodes, getNodesBounds, fitView } = useReactFlow();
+  const storeApi = useTopologyStoreApi();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -84,6 +92,33 @@ export function CanvasToolbar() {
       downloadUrl(dataUrl, "loadscape-diagram.png");
     } catch (error) {
       console.error("PNG export failed", error);
+    }
+  }
+
+  function handleExportJson() {
+    const { nodes, edges } = storeApi.getState();
+    if (nodes.length === 0) return;
+    downloadText(
+      serializeTopology(nodes, edges),
+      "loadscape-diagram.json",
+      "application/json",
+    );
+  }
+
+  async function handleImportJson(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const { nodes, edges } = parseTopology(await file.text());
+      replaceTopology(nodes, edges);
+      requestAnimationFrame(() =>
+        fitView({ maxZoom: 1, padding: 0.4, duration: 300 }),
+      );
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "Couldn't import that file.",
+      );
     }
   }
 
@@ -238,6 +273,7 @@ export function CanvasToolbar() {
       </Tooltip>
 
       <div className="my-1 h-px w-6 bg-border" />
+
       <Tooltip>
         <TooltipTrigger
           onClick={handleExportPng}
@@ -247,6 +283,33 @@ export function CanvasToolbar() {
         </TooltipTrigger>
         <TooltipContent side="right">Export as PNG</TooltipContent>
       </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          onClick={handleExportJson}
+          disabled={!hasNodes}
+          className={iconButtonClass}>
+          <FileDown size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">Export as JSON</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          onClick={() => fileInputRef.current?.click()}
+          className={iconButtonClass}>
+          <FileUp size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">Import JSON</TooltipContent>
+      </Tooltip>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json,.json"
+        onChange={handleImportJson}
+        className="hidden"
+      />
     </aside>
   );
 }
