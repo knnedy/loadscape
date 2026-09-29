@@ -10,6 +10,7 @@ import {
   Redo2,
   PictureInPicture2,
   Wand2,
+  ImageDown,
 } from "lucide-react";
 import {
   Popover,
@@ -36,6 +37,9 @@ import {
 } from "../_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
 import { templates } from "@/lib/catalog/templates";
+import { useReactFlow } from "@xyflow/react";
+import { renderCanvasToPng } from "@/lib/export-image";
+import { downloadUrl } from "@/lib/download";
 
 const iconButtonClass =
   "flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30";
@@ -51,7 +55,9 @@ export function CanvasToolbar() {
   const { undo, redo, pastStates, futureStates } = useTopologyTemporalStore(
     (s) => s,
   );
+  const hasNodes = useTopologyStore((s) => s.nodes.length > 0);
   const [open, setOpen] = useState(false);
+  const { getNodes, getNodesBounds } = useReactFlow();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -69,6 +75,17 @@ export function CanvasToolbar() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  async function handleExportPng() {
+    const nodes = getNodes();
+    if (nodes.length === 0) return;
+    try {
+      const dataUrl = await renderCanvasToPng(getNodesBounds(nodes));
+      downloadUrl(dataUrl, "loadscape-diagram.png");
+    } catch (error) {
+      console.error("PNG export failed", error);
+    }
+  }
 
   return (
     <aside className="absolute top-1/2 left-4 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
@@ -218,6 +235,17 @@ export function CanvasToolbar() {
           <Wand2 size={17} />
         </TooltipTrigger>
         <TooltipContent side="right">Tidy up layout</TooltipContent>
+      </Tooltip>
+
+      <div className="my-1 h-px w-6 bg-border" />
+      <Tooltip>
+        <TooltipTrigger
+          onClick={handleExportPng}
+          disabled={!hasNodes}
+          className={iconButtonClass}>
+          <ImageDown size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">Export as PNG</TooltipContent>
       </Tooltip>
     </aside>
   );
