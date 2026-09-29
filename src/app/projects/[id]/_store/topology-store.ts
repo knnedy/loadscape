@@ -85,6 +85,8 @@ export interface TopologyState {
   updateNoteText: (id: string, text: string) => void;
   updateNoteColor: (id: string, color: string) => void;
   tidyLayout: () => Promise<void>;
+  deleteSelection: () => void;
+  syncSelection: (nodeIds: string[], edgeIds: string[]) => void;
 }
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
@@ -401,6 +403,69 @@ export function createTopologyStore() {
         tidyLayout: async () => {
           const result = await tidyLayout(get().nodes, get().edges);
           set({ nodes: result });
+        },
+        deleteSelection: () => {
+          const { nodes, edges, selectedNodeId, selectedEdgeId } = get();
+          const removedNodeIds = new Set(
+            nodes.filter((n) => n.selected).map((n) => n.id),
+          );
+          const removedEdgeIds = new Set(
+            edges.filter((e) => e.selected).map((e) => e.id),
+          );
+          if (removedNodeIds.size === 0 && removedEdgeIds.size === 0) {
+            if (selectedNodeId) removedNodeIds.add(selectedNodeId);
+            if (selectedEdgeId) removedEdgeIds.add(selectedEdgeId);
+          }
+          if (removedNodeIds.size === 0 && removedEdgeIds.size === 0) return;
+
+          const removedGroups = new Map(
+            nodes
+              .filter(
+                (n) => n.type === "group-container" && removedNodeIds.has(n.id),
+              )
+              .map((n) => [n.id, n]),
+          );
+
+          // Children of a deleted group survive (un-parented to absolute
+          // coords) unless they're selected too.
+          const nextNodes = nodes
+            .filter((n) => !removedNodeIds.has(n.id))
+            .map((n) => {
+              const group = n.parentId ? removedGroups.get(n.parentId) : null;
+              if (!group) return n;
+              const { parentId, extent, ...rest } = n;
+              return {
+                ...rest,
+                position: {
+                  x: n.position.x + group.position.x,
+                  y: n.position.y + group.position.y,
+                },
+              };
+            });
+
+          const nextEdges = edges.filter(
+            (e) =>
+              !removedEdgeIds.has(e.id) &&
+              !removedNodeIds.has(e.source) &&
+              !removedNodeIds.has(e.target),
+          );
+
+          set({
+            nodes: nextNodes,
+            edges: nextEdges,
+            selectedNodeId: null,
+            selectedEdgeId: null,
+          });
+        },
+        syncSelection: (nodeIds, edgeIds) => {
+          const nextNodeId =
+            nodeIds.length === 1 && edgeIds.length === 0 ? nodeIds[0] : null;
+          const nextEdgeId =
+            edgeIds.length === 1 && nodeIds.length === 0 ? edgeIds[0] : null;
+          const { selectedNodeId, selectedEdgeId } = get();
+          if (nextNodeId === selectedNodeId && nextEdgeId === selectedEdgeId)
+            return;
+          set({ selectedNodeId: nextNodeId, selectedEdgeId: nextEdgeId });
         },
       }),
       {
