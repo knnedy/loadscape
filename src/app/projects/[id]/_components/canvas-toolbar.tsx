@@ -13,6 +13,7 @@ import {
   ImageDown,
   FileDown,
   FileUp,
+  Download,
 } from "lucide-react";
 import {
   Popover,
@@ -63,6 +64,7 @@ export function CanvasToolbar() {
   const replaceTopology = useTopologyStore((s) => s.replaceTopology);
 
   const [open, setOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const { getNodes, getNodesBounds, fitView } = useReactFlow();
   const storeApi = useTopologyStoreApi();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -274,25 +276,40 @@ export function CanvasToolbar() {
 
       <div className="my-1 h-px w-6 bg-border" />
 
-      <Tooltip>
-        <TooltipTrigger
-          onClick={handleExportPng}
-          disabled={!hasNodes}
-          className={iconButtonClass}>
-          <ImageDown size={17} />
-        </TooltipTrigger>
-        <TooltipContent side="right">Export as PNG</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger
-          onClick={handleExportJson}
-          disabled={!hasNodes}
-          className={iconButtonClass}>
-          <FileDown size={17} />
-        </TooltipTrigger>
-        <TooltipContent side="right">Export as JSON</TooltipContent>
-      </Tooltip>
+      <Popover open={exportOpen} onOpenChange={setExportOpen}>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <PopoverTrigger
+                disabled={!hasNodes}
+                className={`${iconButtonClass} aria-expanded:bg-accent aria-expanded:text-accent-foreground`}>
+                <Download size={17} />
+              </PopoverTrigger>
+            }
+          />
+          <TooltipContent side="right">Export</TooltipContent>
+        </Tooltip>
+        <PopoverContent side="right" align="start" className="w-44 p-1">
+          <button
+            onClick={() => {
+              setExportOpen(false);
+              handleExportPng();
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
+            <ImageDown size={15} className="text-muted-foreground" />
+            PNG image
+          </button>
+          <button
+            onClick={() => {
+              setExportOpen(false);
+              handleExportJson();
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
+            <FileDown size={15} className="text-muted-foreground" />
+            JSON file
+          </button>
+        </PopoverContent>
+      </Popover>
 
       <Tooltip>
         <TooltipTrigger
