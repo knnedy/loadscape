@@ -50,9 +50,11 @@ export function TopBar({ projectName }: { projectName: string }) {
 
         <button
           onClick={() => setTheme(isDark ? "light" : "dark")}
-          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-          {isDark ? <Moon size={15} /> : <Sun size={15} />}
+          aria-label="Toggle theme"
+          title="Toggle theme"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground trans...">
+          <Sun size={15} className="hidden dark:block" />
+          <Moon size={15} className="block dark:hidden" />
         </button>
 
         <div className="h-5 w-px bg-border" />
