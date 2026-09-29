@@ -11,6 +11,7 @@ import {
   useReactFlow,
   type Connection,
   type Edge,
+  type OnSelectionChangeFunc,
 } from "@xyflow/react";
 import { ComponentNode } from "@/components/nodes/component-node";
 import { GroupNode } from "@/components/nodes/group-node";
@@ -41,6 +42,8 @@ export function Canvas() {
   const deleteNode = useTopologyStore((s) => s.deleteNode);
   const deleteEdge = useTopologyStore((s) => s.deleteEdge);
   const duplicateNode = useTopologyStore((s) => s.duplicateNode);
+  const deleteSelection = useTopologyStore((s) => s.deleteSelection);
+  const syncSelection = useTopologyStore((s) => s.syncSelection);
   const reparentNode = useTopologyStore((s) => s.reparentNode);
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
   const storeApi = useTopologyStoreApi();
@@ -131,6 +134,17 @@ export function Canvas() {
     [getIntersectingNodes, getInternalNode, reparentNode, commitDragCheckpoint],
   );
 
+  const onSelectionChange = useCallback<
+    OnSelectionChangeFunc<AppNode, AppEdge>
+  >(
+    ({ nodes, edges }) =>
+      syncSelection(
+        nodes.map((n) => n.id),
+        edges.map((e) => e.id),
+      ),
+    [syncSelection],
+  );
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
@@ -143,12 +157,11 @@ export function Canvas() {
       }
 
       if (e.key !== "Delete" && e.key !== "Backspace") return;
-      if (selectedNodeId) deleteNode(selectedNodeId);
-      if (selectedEdgeId) deleteEdge(selectedEdgeId);
+      deleteSelection();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeId, selectedEdgeId, deleteNode, deleteEdge, duplicateNode]);
+  }, [selectedNodeId, duplicateNode, deleteSelection]);
 
   return (
     <div className="h-full w-full bg-background">
@@ -168,6 +181,8 @@ export function Canvas() {
         onNodeDragStop={onNodeDragStop}
         onSelectionDragStart={beginDragCheckpoint}
         onSelectionDragStop={commitDragCheckpoint}
+        onSelectionChange={onSelectionChange}
+        deleteKeyCode={null}
         onNodeClick={(_, node) => selectNode(node.id)}
         onEdgeClick={(_, edge) => selectEdge(edge.id)}
         onPaneClick={() => {
