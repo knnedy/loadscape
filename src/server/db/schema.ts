@@ -14,7 +14,7 @@ import type {
 } from "@/app/projects/[id]/_store/topology-store";
 import { relations } from "drizzle-orm";
 
-export const users = pgTable("user", {
+export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
@@ -55,14 +55,14 @@ export const topologies = pgTable("topologies", {
     .references(() => projects.id, { onDelete: "cascade" }),
   nodes: jsonb("nodes").$type<AppNode[]>().notNull().default([]),
   edges: jsonb("edges").$type<AppEdge[]>().notNull().default([]),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
+  updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
 });
 
-export const session = pgTable(
-  "session",
+export const sessions = pgTable(
+  "sessions",
   {
     id: text("id").primaryKey(),
     userId: text("user_id")
@@ -84,11 +84,11 @@ export const session = pgTable(
       withTimezone: true,
     }).notNull(),
   },
-  (table) => [index("session_userId_idx").on(table.userId)],
+  (table) => [index("sessions_user_id_idx").on(table.userId)],
 );
 
-export const account = pgTable(
-  "account",
+export const accounts = pgTable(
+  "accounts",
   {
     id: text("id").primaryKey(),
     userId: text("user_id")
@@ -118,11 +118,11 @@ export const account = pgTable(
       withTimezone: true,
     }).notNull(),
   },
-  (table) => [index("account_userId_idx").on(table.userId)],
+  (table) => [index("accounts_user_id_idx").on(table.userId)],
 );
 
-export const verification = pgTable(
-  "verification",
+export const verifications = pgTable(
+  "verifications",
   {
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
@@ -140,7 +140,7 @@ export const verification = pgTable(
       withTimezone: true,
     }).notNull(),
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)],
+  (table) => [index("verifications_identifier_idx").on(table.identifier)],
 );
 
 export const usersRelations = relations(users, ({ many }) => ({
