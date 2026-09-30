@@ -5,6 +5,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 import type {
@@ -32,15 +33,15 @@ export const users = pgTable("user", {
 export const projects = pgTable(
   "projects",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id").notNull(),
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull().default("Untitled project"),
-    createdAt: timestamp("created_at", { withTimezone: true })
+    createdAt: timestamp("created_at", { precision: 6, withTimezone: true })
       .defaultNow()
       .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
+    updatedAt: timestamp("updated_at", { precision: 6, withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -49,7 +50,7 @@ export const projects = pgTable(
 );
 
 export const topologies = pgTable("topologies", {
-  projectId: text("project_id")
+  projectId: uuid("project_id")
     .primaryKey()
     .references(() => projects.id, { onDelete: "cascade" }),
   nodes: jsonb("nodes").$type<AppNode[]>().notNull().default([]),
@@ -146,12 +147,12 @@ export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
 }));
 
-export const projectsRelations = relations(projects, ({ one, many }) => ({
+export const projectsRelations = relations(projects, ({ one }) => ({
   user: one(users, {
     fields: [projects.userId],
     references: [users.id],
   }),
-  topologies: many(topologies),
+  topology: one(topologies),
 }));
 
 export const topologiesRelations = relations(topologies, ({ one }) => ({
