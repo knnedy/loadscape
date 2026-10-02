@@ -15,7 +15,7 @@ import type {
 import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
-  id: text("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   emailVerified: boolean("email_verified").notNull(),
@@ -34,7 +34,7 @@ export const projects = pgTable(
   "projects",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("user_id")
+    userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull().default("Untitled project"),
@@ -64,8 +64,8 @@ export const topologies = pgTable("topologies", {
 export const sessions = pgTable(
   "sessions",
   {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     token: varchar("token", { length: 255 }).notNull().unique(),
@@ -90,8 +90,8 @@ export const sessions = pgTable(
 export const accounts = pgTable(
   "accounts",
   {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     accountId: text("account_id").notNull(),
@@ -124,7 +124,7 @@ export const accounts = pgTable(
 export const verifications = pgTable(
   "verifications",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
     expiresAt: timestamp("expires_at", {
