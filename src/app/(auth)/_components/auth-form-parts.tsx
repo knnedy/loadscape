@@ -36,7 +36,7 @@ export function AuthField({
           name={id}
           type={isPassword && revealed ? "text" : type}
           className={cn(
-            "h-11 rounded-xl bg-background pl-10 dark:bg-background",
+            "h-11 rounded-lg border-border bg-card pl-10 transition-colors hover:border-foreground/25 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 dark:bg-card",
             isPassword && "pr-11",
             className,
           )}
@@ -47,7 +47,7 @@ export function AuthField({
             type="button"
             onClick={() => setRevealed((v) => !v)}
             aria-label={revealed ? "Hide password" : "Show password"}
-            className="absolute top-1/2 right-2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+            className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
             {revealed ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         )}
@@ -60,7 +60,7 @@ export function AuthError({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+      className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
       <AlertCircle size={16} className="mt-0.5 shrink-0" />
       <p>{message}</p>
     </div>
@@ -78,7 +78,7 @@ export function AuthSubmitButton({
     <Button
       type="submit"
       disabled={pending}
-      className="h-11 w-full rounded-xl text-sm font-medium">
+      className="h-11 w-full rounded-lg text-sm font-medium shadow-[inset_0_1px_0_0_rgb(255_255_255/0.18)] transition-[filter,transform] hover:brightness-110 active:translate-y-px">
       {pending && <Loader2 size={16} className="animate-spin" />}
       {children}
     </Button>

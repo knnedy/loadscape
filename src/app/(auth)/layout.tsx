@@ -17,13 +17,13 @@ export default function AuthLayout({
 }) {
   return (
     <div className="grid flex-1 lg:grid-cols-2">
-      <div className="flex flex-col px-6 py-8 sm:px-12 lg:px-16">
+      <div className="flex flex-col px-6 py-8 sm:px-12">
         <Link
           href="/"
           className="w-fit text-base font-semibold tracking-tight text-foreground">
           Loadscape
         </Link>
-        <main className="flex flex-1 items-center py-12">
+        <main className="flex flex-1 items-center justify-center py-12">
           <div className="w-full max-w-sm">{children}</div>
         </main>
       </div>

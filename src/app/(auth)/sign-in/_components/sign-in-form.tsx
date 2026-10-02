@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { Lock, Mail } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  AuthError,
+  AuthField,
+  AuthSubmitButton,
+} from "../../_components/auth-form-parts";
 
 export function SignInForm({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
@@ -46,47 +49,32 @@ export function SignInForm({ redirectTo }: { redirectTo: string }) {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            className="h-10"
-            required
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            className="h-10"
-            required
-          />
-        </div>
-
-        {error && (
-          <p
-            role="alert"
-            className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-
-        <Button type="submit" className="h-10 w-full" disabled={pending}>
-          {pending ? "Signing in..." : "Sign in"}
-        </Button>
+        <AuthField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          icon={<Mail />}
+          autoFocus
+          required
+        />
+        <AuthField
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          icon={<Lock />}
+          required
+        />
+        {error && <AuthError message={error} />}
+        <AuthSubmitButton pending={pending}>Sign in</AuthSubmitButton>
       </form>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-center text-sm text-muted-foreground">
         New here?{" "}
         <Link
           href={`/sign-up?redirect=${encodeURIComponent(redirectTo)}`}
-          className="font-medium text-foreground underline underline-offset-4">
+          className="font-medium text-primary underline-offset-4 hover:underline">
           Create an account
         </Link>
       </p>

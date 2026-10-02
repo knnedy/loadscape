@@ -3,15 +3,23 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { Check, Lock, Mail, User } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import {
+  AuthError,
+  AuthField,
+  AuthSubmitButton,
+} from "../../_components/auth-form-parts";
+
+const MIN_PASSWORD_LENGTH = 8;
 
 export function SignUpForm({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [password, setPassword] = useState("");
+  const longEnough = password.length >= MIN_PASSWORD_LENGTH;
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,61 +55,55 @@ export function SignUpForm({ redirectTo }: { redirectTo: string }) {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <AuthField
+          id="name"
+          label="Name"
+          autoComplete="name"
+          icon={<User />}
+          autoFocus
+          required
+        />
+        <AuthField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          icon={<Mail />}
+          required
+        />
         <div className="flex flex-col gap-2">
-          <Label htmlFor="name">Name</Label>
-          <Input
-            id="name"
-            name="name"
-            autoComplete="name"
-            className="h-10"
-            required
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            className="h-10"
-            required
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
+          <AuthField
             id="password"
-            name="password"
+            label="Password"
             type="password"
             autoComplete="new-password"
-            minLength={8}
-            className="h-10"
+            icon={<Lock />}
+            minLength={MIN_PASSWORD_LENGTH}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <p className="text-xs text-muted-foreground">
-            Use at least 8 characters.
+          <p
+            className={cn(
+              "flex items-center gap-1.5 text-xs transition-colors",
+              longEnough ? "text-foreground" : "text-muted-foreground",
+            )}>
+            <Check
+              size={13}
+              className={longEnough ? "text-primary" : "opacity-40"}
+            />
+            At least {MIN_PASSWORD_LENGTH} characters
           </p>
         </div>
-
-        {error && (
-          <p
-            role="alert"
-            className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-
-        <Button type="submit" className="h-10 w-full" disabled={pending}>
-          {pending ? "Creating account..." : "Create account"}
-        </Button>
+        {error && <AuthError message={error} />}
+        <AuthSubmitButton pending={pending}>Create account</AuthSubmitButton>
       </form>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
           href={`/sign-in?redirect=${encodeURIComponent(redirectTo)}`}
-          className="font-medium text-foreground underline underline-offset-4">
+          className="font-medium text-primary underline-offset-4 hover:underline">
           Sign in
         </Link>
       </p>
