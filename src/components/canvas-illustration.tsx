@@ -45,7 +45,7 @@ function glow(color: string) {
   return `drop-shadow(0 0 3px color-mix(in oklch, ${color} 70%, transparent))`;
 }
 
-export function AuthDiagram() {
+export function CanvasIllustration({ className }: { className?: string }) {
   const nodes = categories
     .slice(0, slots.length)
     .map(({ category, label }, i) => {
@@ -67,7 +67,7 @@ export function AuthDiagram() {
   return (
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      className="h-auto w-full max-w-120"
+      className={cn("h-auto w-full max-w-120", className)}
       aria-hidden="true">
       <defs>
         {nodes.map((node) => (

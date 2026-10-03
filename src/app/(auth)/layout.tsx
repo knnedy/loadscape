@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AuthDiagram } from "./_components/auth-diagram";
+import { CanvasIllustration } from "@/components/canvas-illustration";
 
 const canvasBackground = {
   backgroundImage: [
