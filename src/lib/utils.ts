@@ -46,3 +46,12 @@ const UUID_PATTERN =
 export function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
 }
+
+export const MAX_PROJECT_NAME_LENGTH = 80;
+
+export function normalizeProjectName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const name = raw.trim().replace(/\s+/g, " ");
+  if (name.length === 0 || name.length > MAX_PROJECT_NAME_LENGTH) return null;
+  return name;
+}
