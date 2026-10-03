@@ -55,3 +55,29 @@ export function normalizeProjectName(raw: unknown): string | null {
   if (name.length === 0 || name.length > MAX_PROJECT_NAME_LENGTH) return null;
   return name;
 }
+
+const relativeTimeFormat = new Intl.RelativeTimeFormat("en", {
+  numeric: "auto",
+});
+
+export function formatRelativeTime(date: Date, now: Date = new Date()): string {
+  const elapsed = Math.round((now.getTime() - date.getTime()) / 1000);
+  if (elapsed < 45) return "just now";
+  if (elapsed < 3_600) {
+    return relativeTimeFormat.format(
+      -Math.max(1, Math.floor(elapsed / 60)),
+      "minute",
+    );
+  }
+  if (elapsed < 86_400) {
+    return relativeTimeFormat.format(-Math.floor(elapsed / 3_600), "hour");
+  }
+  if (elapsed < 7 * 86_400) {
+    return relativeTimeFormat.format(-Math.floor(elapsed / 86_400), "day");
+  }
+  return date.toLocaleDateString("en", {
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+  });
+}
