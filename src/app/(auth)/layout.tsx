@@ -32,7 +32,7 @@ export default function AuthLayout({
         aria-hidden="true"
         className="hidden items-center justify-center overflow-hidden border-l border-border bg-muted/30 p-10 lg:flex"
         style={canvasBackground}>
-        <AuthDiagram />
+        <CanvasIllustration />
       </aside>
     </div>
   );

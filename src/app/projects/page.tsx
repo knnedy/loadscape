@@ -16,10 +16,11 @@ export default async function ProjectsPage() {
     <div className="flex flex-1 flex-col">
       <ProjectsHeader user={{ name: user.name, email: user.email }} />
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
+        {" "}
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
               Projects
             </h1>
             {projects.length > 0 && (
@@ -31,7 +32,6 @@ export default async function ProjectsPage() {
           </div>
           {projects.length > 0 && <NewProjectButton />}
         </div>
-
         {projects.length === 0 ? (
           <EmptyProjects />
         ) : (
