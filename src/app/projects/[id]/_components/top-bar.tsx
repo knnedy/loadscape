@@ -3,9 +3,15 @@
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { ChevronDown, History, Play, Waypoints, Sun, Moon } from "lucide-react";
-import { UserMenu } from "./user-menu";
+import { UserMenu, type AppUser } from "../../_components/user-menu";
 
-export function TopBar({ projectName }: { projectName: string }) {
+export function TopBar({
+  projectName,
+  user,
+}: {
+  projectName: string;
+  user: AppUser;
+}) {
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -42,23 +48,19 @@ export function TopBar({ projectName }: { projectName: string }) {
           </span>
           Saved
         </span>
-
         <button className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
           <History size={14} />
           History
         </button>
-
         <button
           onClick={() => setTheme(isDark ? "light" : "dark")}
           aria-label="Toggle theme"
           title="Toggle theme"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground trans...">
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
           <Sun size={15} className="hidden dark:block" />
           <Moon size={15} className="block dark:hidden" />
         </button>
-
         <div className="h-5 w-px bg-border" />
-
         <button
           className="group flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground transition-transform duration-150 hover:opacity-90 active:scale-[0.97]"
           style={{
@@ -68,9 +70,8 @@ export function TopBar({ projectName }: { projectName: string }) {
           <Play size={13} fill="currentColor" />
           Run
         </button>
-
         <div className="h-5 w-px bg-border" />
-        <UserMenu />
+        <UserMenu user={user} />
       </div>
     </header>
   );

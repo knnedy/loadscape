@@ -189,7 +189,7 @@ export function ProjectCard({ id, name, updatedAt }: ProjectCardProps) {
         href={`/projects/${id}`}
         className="block outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset">
         <div
-          className="flex aspect-[16/10] items-center justify-center border-b border-border bg-muted/30"
+          className="flex aspect-16/10 items-center justify-center border-b border-border bg-muted/30"
           style={{
             backgroundImage:
               "radial-gradient(var(--canvas-dot) 1.5px, transparent 1.5px)",
