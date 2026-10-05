@@ -3,10 +3,7 @@ import { requireSession } from "@/server/session";
 import { listProjects } from "@/server/projects";
 import { ProjectsHeader } from "./_components/projects-header";
 import { ProjectCard } from "./_components/project-card";
-import {
-  NewProjectButton,
-  NewProjectTile,
-} from "./_components/new-project-button";
+import { NewProjectButton } from "./_components/new-project-button";
 import { EmptyProjects } from "./_components/empty-projects";
 
 export const metadata: Metadata = { title: "Projects | Loadscape" };
@@ -39,9 +36,6 @@ export default async function ProjectsPage() {
           <EmptyProjects />
         ) : (
           <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <li>
-              <NewProjectTile />
-            </li>
             {projects.map((project) => (
               <li key={project.id}>
                 <ProjectCard
