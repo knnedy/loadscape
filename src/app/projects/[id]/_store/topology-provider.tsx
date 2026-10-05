@@ -4,16 +4,23 @@ import { createContext, useContext, useRef, type ReactNode } from "react";
 import { useStore } from "zustand";
 import {
   createTopologyStore,
+  type InitialTopology,
   type TopologyState,
   type TopologyStore,
 } from "./topology-store";
 
 const TopologyStoreContext = createContext<TopologyStore | null>(null);
 
-export function TopologyProvider({ children }: { children: ReactNode }) {
+export function TopologyProvider({
+  initialTopology,
+  children,
+}: {
+  initialTopology: InitialTopology;
+  children: ReactNode;
+}) {
   const storeRef = useRef<TopologyStore | null>(null);
   if (!storeRef.current) {
-    storeRef.current = createTopologyStore();
+    storeRef.current = createTopologyStore(initialTopology);
   }
 
   return (
