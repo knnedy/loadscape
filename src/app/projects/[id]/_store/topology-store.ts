@@ -47,6 +47,11 @@ export type AppNode = Node<
 >;
 export type AppEdge = Edge<TopologyEdgeData>;
 
+export interface InitialTopology {
+  nodes: AppNode[];
+  edges: AppEdge[];
+}
+
 export interface TopologyState {
   nodes: AppNode[];
   edges: AppEdge[];
@@ -92,7 +97,20 @@ export interface TopologyState {
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
 
-export function createTopologyStore() {
+// Ids look like `<component>-<n>`, `group-<n>` and `note-<n>`. The counters
+// must start past the highest suffix already in the diagram, or newly
+// generated ids could collide with existing ones.
+function highestIdSuffix(nodes: AppNode[]) {
+  return nodes.reduce((max, node) => {
+    const match = /(\d+)$/.exec(node.id);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+}
+
+export function createTopologyStore(
+  initial: InitialTopology = { nodes: [], edges: [] },
+) {
+  const startingId = highestIdSuffix(initial.nodes);
   let nodeIdCounter = 0;
   let groupIdCounter = 0;
   let noteIdCounter = 0;
@@ -105,8 +123,8 @@ export function createTopologyStore() {
   const store = createStore<TopologyState>()(
     temporal(
       (set, get) => ({
-        nodes: fixtureNodes,
-        edges: fixtureEdges,
+        nodes: initial.nodes,
+        edges: initial.edges,
         selectedNodeId: null,
         selectedEdgeId: null,
         onNodesChange: (changes) => {
@@ -469,12 +487,7 @@ export function createTopologyStore() {
           set({ selectedNodeId: nextNodeId, selectedEdgeId: nextEdgeId });
         },
         replaceTopology: (nodes, edges) => {
-          // Imported ids may collide with freshly generated ones, so push
-          // every counter past the highest numeric suffix in the file.
-          const floor = nodes.reduce((max, n) => {
-            const match = /(\d+)$/.exec(n.id);
-            return match ? Math.max(max, Number(match[1])) : max;
-          }, 0);
+          const floor = highestIdSuffix(nodes);
           nodeIdCounter = Math.max(nodeIdCounter, floor);
           groupIdCounter = Math.max(groupIdCounter, floor);
           noteIdCounter = Math.max(noteIdCounter, floor);
