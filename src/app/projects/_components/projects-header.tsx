@@ -10,12 +10,7 @@ export function ProjectsHeader({ user }: { user: AppUser }) {
   const isDark = resolvedTheme === "dark";
 
   return (
-    <header
-      className="relative z-20 flex h-14 shrink-0 items-center justify-between bg-card px-4"
-      style={{
-        boxShadow:
-          "0 1px 0 0 var(--border), 0 16px 32px -24px rgba(0,0,0,0.55)",
-      }}>
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md">
       <div className="flex items-center gap-2">
         <Link
           href="/projects"
