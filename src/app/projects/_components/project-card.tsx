@@ -23,6 +23,8 @@ import { Input } from "@/components/ui/input";
 import { MAX_PROJECT_NAME_LENGTH } from "@/lib/utils";
 import { deleteProject, renameProject, type ActionResult } from "../actions";
 import { RelativeTime } from "./relative-time";
+import type { ProjectPreview } from "@/lib/project-preview";
+import { ProjectPreviewSvg } from "./project-preview-svg";
 
 type ActionError = Extract<ActionResult, { ok: false }>["error"];
 
@@ -177,9 +179,15 @@ interface ProjectCardProps {
   id: string;
   name: string;
   updatedAt: Date;
+  preview: ProjectPreview | null;
 }
 
-export function ProjectCard({ id, name, updatedAt }: ProjectCardProps) {
+export function ProjectCard({
+  id,
+  name,
+  updatedAt,
+  preview,
+}: ProjectCardProps) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -189,21 +197,40 @@ export function ProjectCard({ id, name, updatedAt }: ProjectCardProps) {
         href={`/projects/${id}`}
         className="block outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset">
         <div
-          className="flex aspect-16/10 items-center justify-center border-b border-border bg-muted/30"
+          className="relative aspect-16/10 border-b border-border bg-muted/30"
           style={{
             backgroundImage:
               "radial-gradient(var(--canvas-dot) 1.5px, transparent 1.5px)",
             backgroundSize: "24px 24px",
           }}>
-          <Waypoints size={28} className="text-muted-foreground/30" />
+          {preview ? (
+            <div className="absolute inset-0 p-3">
+              <ProjectPreviewSvg preview={preview} />
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex h-11 w-28 items-center justify-center rounded-lg border border-dashed border-muted-foreground/40 text-xs text-muted-foreground">
+                Empty canvas
+              </div>
+            </div>
+          )}
         </div>
-        <div className="flex flex-col gap-0.5 px-4 py-3">
-          <p className="truncate text-sm font-semibold text-foreground">
-            {name}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Edited <RelativeTime date={updatedAt} />
-          </p>
+
+        <div className="flex items-end justify-between gap-3 px-4 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">
+              {name}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Edited <RelativeTime date={updatedAt} />
+            </p>
+          </div>
+          {preview && preview.componentCount > 0 && (
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground tabular-nums">
+              {preview.componentCount}{" "}
+              {preview.componentCount === 1 ? "component" : "components"}
+            </span>
+          )}
         </div>
       </Link>
 
