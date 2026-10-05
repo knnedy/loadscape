@@ -16,8 +16,10 @@ export default async function ProjectPage({
 
   return (
     <WorkspaceShell
+      key={project.id}
       projectName={project.name}
       user={{ name: user.name, email: user.email }}
+      initialTopology={{ nodes: project.nodes, edges: project.edges }}
     />
   );
 }
