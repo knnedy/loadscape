@@ -497,9 +497,13 @@ export function createTopologyStore(
       {
         limit: HISTORY_LIMIT,
         partialize: (state) => ({ nodes: state.nodes, edges: state.edges }),
-        // No handleSet override — default (untamed) push. Drag-gesture
-        // coalescing is handled explicitly by the canvas via pause/resume
-        // and a single manual checkpoint, not by timing.
+        // Without this, zundo records a history entry on every `set`, even
+        // ones that leave nodes and edges untouched (selection, minimap).
+        equality: (past, current) =>
+          past.nodes === current.nodes && past.edges === current.edges,
+        // No handleSet override — drag-gesture coalescing is handled
+        // explicitly by the canvas via pause/resume and a single manual
+        // checkpoint, not by timing.
       },
     ),
   );
