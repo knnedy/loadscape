@@ -2,6 +2,8 @@ import { componentCatalog } from "@/lib/catalog/components";
 import type { AppNode, AppEdge } from "../_store/topology-store";
 
 export const TOPOLOGY_FILE_VERSION = 1;
+export const MAX_NODES = 500;
+export const MAX_EDGES = 1000;
 
 const NODE_TYPES = new Set(["component", "group-container", "note"]);
 
@@ -9,8 +11,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Runtime-only fields React Flow re-derives; keeping them out of the file
-// avoids stale selection and measurements on import.
+// Runtime-only fields React Flow re-derives; keeping them out of stored and
+// exported data avoids stale selection and measurements on load.
 function stripTransient<T extends object>(item: T): T {
   const { selected, dragging, measured, resizing, ...rest } = item as T & {
     selected?: boolean;
@@ -33,26 +35,23 @@ export function serializeTopology(nodes: AppNode[], edges: AppEdge[]): string {
   );
 }
 
-export function parseTopology(text: string): {
+// Shared by JSON import and the save action. Treats input as untrusted.
+export function validateTopology(raw: unknown): {
   nodes: AppNode[];
   edges: AppEdge[];
 } {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    throw new Error("This file isn't valid JSON.");
-  }
-
   if (
     !isRecord(raw) ||
     !Array.isArray(raw.nodes) ||
     !Array.isArray(raw.edges)
   ) {
-    throw new Error("This file doesn't look like a Loadscape diagram.");
+    throw new Error("This doesn't look like a Loadscape diagram.");
   }
   if (raw.version !== undefined && raw.version !== TOPOLOGY_FILE_VERSION) {
     throw new Error(`Unsupported diagram version: ${String(raw.version)}.`);
+  }
+  if (raw.nodes.length > MAX_NODES || raw.edges.length > MAX_EDGES) {
+    throw new Error("This diagram is too large.");
   }
 
   const componentIds = new Set(componentCatalog.map((c) => c.id));
@@ -65,8 +64,8 @@ export function parseTopology(text: string): {
       typeof node.type !== "string" ||
       !NODE_TYPES.has(node.type) ||
       !isRecord(node.position) ||
-      typeof node.position.x !== "number" ||
-      typeof node.position.y !== "number" ||
+      !Number.isFinite(node.position.x) ||
+      !Number.isFinite(node.position.y) ||
       !isRecord(node.data)
     ) {
       throw new Error("The diagram contains a malformed node.");
@@ -126,4 +125,14 @@ export function parseTopology(text: string): {
   })) as AppEdge[];
 
   return { nodes, edges };
+}
+
+export function parseTopology(text: string) {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error("This file isn't valid JSON.");
+  }
+  return validateTopology(raw);
 }
