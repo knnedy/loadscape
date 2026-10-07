@@ -85,6 +85,8 @@ export interface TopologyState {
   ) => void;
   showMiniMap: boolean;
   toggleMiniMap: () => void;
+  snapToGrid: boolean;
+  toggleSnapToGrid: () => void;
   insertTemplate: (template: Template) => void;
   addNote: () => void;
   updateNoteText: (id: string, text: string) => void;
@@ -347,6 +349,8 @@ export function createTopologyStore(
         },
         showMiniMap: false,
         toggleMiniMap: () => set({ showMiniMap: !get().showMiniMap }),
+        snapToGrid: false,
+        toggleSnapToGrid: () => set({ snapToGrid: !get().snapToGrid }),
         insertTemplate: (template: Template) => {
           const offsetX = 900;
           const offsetY = 40;
