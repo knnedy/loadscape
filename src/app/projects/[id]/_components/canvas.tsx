@@ -29,6 +29,8 @@ import {
 } from "../_store/topology-store";
 
 export function Canvas() {
+  const SNAP_GRID: [number, number] = [24, 24];
+
   const nodes = useTopologyStore((s) => s.nodes);
   const edges = useTopologyStore((s) => s.edges);
   const onNodesChange = useTopologyStore((s) => s.onNodesChange);
@@ -46,6 +48,7 @@ export function Canvas() {
   const syncSelection = useTopologyStore((s) => s.syncSelection);
   const reparentNode = useTopologyStore((s) => s.reparentNode);
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
+  const snapToGrid = useTopologyStore((s) => s.snapToGrid);
   const storeApi = useTopologyStoreApi();
 
   const nodeTypes = useMemo(
@@ -228,6 +231,8 @@ export function Canvas() {
             zoomable
           />
         )}
+        snapToGrid={snapToGrid}
+        snapGrid={SNAP_GRID}
       </ReactFlow>
     </div>
   );
