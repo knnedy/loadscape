@@ -28,9 +28,10 @@ import {
   type AppEdge,
 } from "../_store/topology-store";
 
-export function Canvas() {
-  const SNAP_GRID: [number, number] = [24, 24];
+// Matches the 24px minor dots drawn by the canvas background.
+const SNAP_GRID: [number, number] = [24, 24];
 
+export function Canvas() {
   const nodes = useTopologyStore((s) => s.nodes);
   const edges = useTopologyStore((s) => s.edges);
   const onNodesChange = useTopologyStore((s) => s.onNodesChange);
@@ -40,8 +41,6 @@ export function Canvas() {
   const selectNode = useTopologyStore((s) => s.selectNode);
   const selectEdge = useTopologyStore((s) => s.selectEdge);
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
-  const selectedEdgeId = useTopologyStore((s) => s.selectedEdgeId);
-  const deleteNode = useTopologyStore((s) => s.deleteNode);
   const deleteEdge = useTopologyStore((s) => s.deleteEdge);
   const duplicateNode = useTopologyStore((s) => s.duplicateNode);
   const deleteSelection = useTopologyStore((s) => s.deleteSelection);
@@ -173,6 +172,8 @@ export function Canvas() {
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        snapToGrid={snapToGrid}
+        snapGrid={SNAP_GRID}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -231,8 +232,6 @@ export function Canvas() {
             zoomable
           />
         )}
-        snapToGrid={snapToGrid}
-        snapGrid={SNAP_GRID}
       </ReactFlow>
     </div>
   );
