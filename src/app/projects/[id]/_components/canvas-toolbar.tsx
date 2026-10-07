@@ -13,6 +13,7 @@ import {
   ImageDown,
   FileDown,
   FileUp,
+  Magnet,
   Download,
 } from "lucide-react";
 import {
@@ -62,6 +63,8 @@ export function CanvasToolbar() {
   );
   const hasNodes = useTopologyStore((s) => s.nodes.length > 0);
   const replaceTopology = useTopologyStore((s) => s.replaceTopology);
+  const snapToGrid = useTopologyStore((s) => s.snapToGrid);
+  const toggleSnapToGrid = useTopologyStore((s) => s.toggleSnapToGrid);
 
   const [open, setOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -263,6 +266,20 @@ export function CanvasToolbar() {
           <PictureInPicture2 size={17} />
         </TooltipTrigger>
         <TooltipContent side="right">Toggle minimap</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          onClick={toggleSnapToGrid}
+          aria-pressed={snapToGrid}
+          className={`flex h-9.5 w-9.5 items-center justify-center rounded-xl transition-colors ${
+            snapToGrid
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          }`}>
+          <Magnet size={17} />
+        </TooltipTrigger>
+        <TooltipContent side="right">Snap to grid</TooltipContent>
       </Tooltip>
 
       <Tooltip>
