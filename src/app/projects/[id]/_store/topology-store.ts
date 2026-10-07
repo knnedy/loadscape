@@ -18,7 +18,6 @@ import type {
   EdgeDirection,
   TopologyNoteData,
 } from "@/lib/types/topology";
-import { fixtureNodes, fixtureEdges } from "@/lib/simulation/fixtures";
 import type { ComponentDef } from "@/lib/catalog/components";
 import type { TopologyGroupData } from "@/lib/types/topology";
 import { groupColorPalette } from "@/lib/catalog/group-colors";
@@ -113,9 +112,9 @@ export function createTopologyStore(
   initial: InitialTopology = { nodes: [], edges: [] },
 ) {
   const startingId = highestIdSuffix(initial.nodes);
-  let nodeIdCounter = 0;
-  let groupIdCounter = 0;
-  let noteIdCounter = 0;
+  let nodeIdCounter = startingId;
+  let groupIdCounter = startingId;
+  let noteIdCounter = startingId;
   // Self-reference so actions defined inside this closure can reach
   // `.temporal` (pause/resume) on the store that wraps them. Assigned
   // right after createStore() returns, below — safe because these
