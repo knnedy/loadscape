@@ -13,10 +13,12 @@ import type { AppUser } from "../../_components/user-menu";
 import type { InitialTopology } from "../_store/topology-store";
 
 export function WorkspaceShell({
+  projectId,
   projectName,
   user,
   initialTopology,
 }: {
+  projectId: string;
   projectName: string;
   user: AppUser;
   initialTopology: InitialTopology;
@@ -25,7 +27,7 @@ export function WorkspaceShell({
     <TooltipProvider delay={200}>
       <TopologyProvider initialTopology={initialTopology}>
         <div className="flex h-screen w-full flex-col">
-          <TopBar projectName={projectName} user={user} />
+          <TopBar projectId={projectId} projectName={projectName} user={user} />{" "}
           <div className="flex flex-1 overflow-hidden">
             <div className="relative flex-1 overflow-hidden">
               <ReactFlowProvider>
