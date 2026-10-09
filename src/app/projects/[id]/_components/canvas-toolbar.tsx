@@ -22,25 +22,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  Command,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-} from "@/components/ui/command";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { categories, componentCatalog } from "@/lib/catalog/components";
+import { ComponentPalette } from "./component-palette";
 import {
   useTopologyStore,
   useTopologyStoreApi,
   useTopologyTemporalStore,
 } from "../_store/topology-provider";
-import { Icon as IconifyIcon } from "@iconify/react";
 import { templates } from "@/lib/catalog/templates";
 import { useReactFlow } from "@xyflow/react";
 import { renderCanvasToPng } from "@/lib/export-image";
@@ -143,41 +134,12 @@ export function CanvasToolbar() {
           </TooltipContent>
         </Tooltip>
         <PopoverContent side="right" align="start" className="w-72 p-0">
-          <Command>
-            <CommandInput placeholder="Search components..." />
-            <CommandList className="max-h-80">
-              <CommandEmpty>No components found.</CommandEmpty>
-              {categories.map(({ category, label }) => {
-                const items = componentCatalog.filter(
-                  (c) => c.category === category,
-                );
-                if (items.length === 0) return null;
-                return (
-                  <CommandGroup key={category} heading={label}>
-                    {items.map((component) => (
-                      <CommandItem
-                        key={component.id}
-                        value={`${component.label} ${label}`}
-                        onSelect={() => {
-                          addComponent(component);
-                          setOpen(false);
-                        }}
-                        className="gap-2">
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white p-0.5 text-neutral-800">
-                          <IconifyIcon
-                            icon={component.icon}
-                            width={14}
-                            height={14}
-                          />
-                        </div>
-                        <span className="truncate">{component.label}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                );
-              })}
-            </CommandList>
-          </Command>
+          <ComponentPalette
+            onPick={(component) => {
+              addComponent(component);
+              setOpen(false);
+            }}
+          />
         </PopoverContent>
       </Popover>
 
