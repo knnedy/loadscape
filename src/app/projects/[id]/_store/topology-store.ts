@@ -87,6 +87,7 @@ export interface TopologyState {
   snapToGrid: boolean;
   toggleSnapToGrid: () => void;
   insertTemplate: (template: Template) => void;
+  insertTopology: (nodes: AppNode[], edges: AppEdge[]) => void;
   addNote: () => void;
   updateNoteText: (id: string, text: string) => void;
   updateNoteColor: (id: string, color: string) => void;
@@ -350,6 +351,78 @@ export function createTopologyStore(
         toggleMiniMap: () => set({ showMiniMap: !get().showMiniMap }),
         snapToGrid: false,
         toggleSnapToGrid: () => set({ snapToGrid: !get().snapToGrid }),
+
+        // Adds a saved diagram next to what's already on the canvas, giving
+        // every node and edge a fresh id so nothing can collide.
+        insertTopology: (incomingNodes, incomingEdges) => {
+          if (incomingNodes.length === 0) return;
+
+          const widthOf = (n: AppNode) =>
+            n.measured?.width ??
+            n.width ??
+            (typeof n.style?.width === "number" ? n.style.width : 160);
+
+          const existing = get().nodes.filter((n) => !n.parentId);
+          const anchorX = existing.length
+            ? Math.max(...existing.map((n) => n.position.x + widthOf(n))) + 96
+            : 0;
+          const anchorY = existing.length
+            ? Math.min(...existing.map((n) => n.position.y))
+            : 0;
+
+          const topLevel = incomingNodes.filter((n) => !n.parentId);
+          const originX = Math.min(...topLevel.map((n) => n.position.x));
+          const originY = Math.min(...topLevel.map((n) => n.position.y));
+          const dx = anchorX - originX;
+          const dy = anchorY - originY;
+
+          const idMap = new Map<string, string>();
+          const newNodes = incomingNodes.map((node) => {
+            let id: string;
+            if (node.type === "group-container") {
+              groupIdCounter += 1;
+              id = `group-${groupIdCounter}`;
+            } else if (node.type === "note") {
+              noteIdCounter += 1;
+              id = `note-${noteIdCounter}`;
+            } else {
+              nodeIdCounter += 1;
+              id = `${(node.data as TopologyNodeData).componentId}-${nodeIdCounter}`;
+            }
+            idMap.set(node.id, id);
+
+            // Children keep their position relative to their group.
+            const { parentId, ...rest } = node;
+            const next = {
+              ...rest,
+              id,
+              position: parentId
+                ? node.position
+                : { x: node.position.x + dx, y: node.position.y + dy },
+            } as AppNode;
+            if (parentId) next.parentId = idMap.get(parentId);
+            return next;
+          });
+
+          const newEdges = incomingEdges.flatMap((edge) => {
+            const source = idMap.get(edge.source);
+            const target = idMap.get(edge.target);
+            if (!source || !target) return [];
+            return [
+              {
+                ...edge,
+                id: `edge-${source}-${target}-${Date.now()}-${Math.random()}`,
+                source,
+                target,
+              },
+            ];
+          });
+
+          set({
+            nodes: [...get().nodes, ...newNodes],
+            edges: [...get().edges, ...newEdges],
+          });
+        },
         insertTemplate: (template: Template) => {
           const offsetX = 900;
           const offsetY = 40;
