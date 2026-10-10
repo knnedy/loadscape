@@ -81,3 +81,20 @@ export function formatRelativeTime(date: Date, now: Date = new Date()): string {
     year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
   });
 }
+
+export const MAX_TEMPLATE_NAME_LENGTH = 60;
+export const MAX_TEMPLATE_DESCRIPTION_LENGTH = 140;
+
+export function normalizeTemplateName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const name = raw.trim().replace(/\s+/g, " ");
+  if (name.length === 0 || name.length > MAX_TEMPLATE_NAME_LENGTH) return null;
+  return name;
+}
+
+// The description is optional: an empty string is valid, null means invalid.
+export function normalizeTemplateDescription(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const text = raw.trim().replace(/\s+/g, " ");
+  return text.length > MAX_TEMPLATE_DESCRIPTION_LENGTH ? null : text;
+}
