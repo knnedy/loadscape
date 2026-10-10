@@ -11,30 +11,33 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { AppUser } from "../../_components/user-menu";
 import type { InitialTopology } from "../_store/topology-store";
+import type { TemplateSummary } from "../template-actions";
 
 export function WorkspaceShell({
   projectId,
   projectName,
   user,
   initialTopology,
+  userTemplates,
 }: {
   projectId: string;
   projectName: string;
   user: AppUser;
   initialTopology: InitialTopology;
+  userTemplates: TemplateSummary[];
 }) {
   return (
     <TooltipProvider delay={200}>
       <TopologyProvider initialTopology={initialTopology}>
         <div className="flex h-screen w-full flex-col">
-          <TopBar projectId={projectId} projectName={projectName} user={user} />{" "}
+          <TopBar projectId={projectId} projectName={projectName} user={user} />
           <div className="flex flex-1 overflow-hidden">
             <div className="relative flex-1 overflow-hidden">
               <ReactFlowProvider>
                 <Canvas />
                 <EmptyState />
                 <StatsPanel />
-                <CanvasToolbar />
+                <CanvasToolbar userTemplates={userTemplates} />
               </ReactFlowProvider>
             </div>
             <ConfigPanel />
