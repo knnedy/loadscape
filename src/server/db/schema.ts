@@ -61,6 +61,24 @@ export const topologies = pgTable("topologies", {
     .notNull(),
 });
 
+export const templates = pgTable(
+  "templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    nodes: jsonb("nodes").$type<AppNode[]>().notNull().default([]),
+    edges: jsonb("edges").$type<AppEdge[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { precision: 6, withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("templates_user_id_idx").on(table.userId)],
+);
+
 export const sessions = pgTable(
   "sessions",
   {
@@ -145,6 +163,7 @@ export const verifications = pgTable(
 
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
+  templates: many(templates),
 }));
 
 export const projectsRelations = relations(projects, ({ one }) => ({
@@ -159,5 +178,12 @@ export const topologiesRelations = relations(topologies, ({ one }) => ({
   project: one(projects, {
     fields: [topologies.projectId],
     references: [projects.id],
+  }),
+}));
+
+export const templatesRelations = relations(templates, ({ one }) => ({
+  user: one(users, {
+    fields: [templates.userId],
+    references: [users.id],
   }),
 }));
