@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   Plus,
   BoxSelect,
-  LayoutTemplate,
   MessageSquareText,
   Undo2,
   Redo2,
@@ -26,27 +25,31 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ComponentPalette } from "./component-palette";
 import {
   useTopologyStore,
   useTopologyStoreApi,
   useTopologyTemporalStore,
 } from "../_store/topology-provider";
-import { templates } from "@/lib/catalog/templates";
 import { useReactFlow } from "@xyflow/react";
 import { renderCanvasToPng } from "@/lib/export-image";
 import { downloadText, downloadUrl } from "@/lib/download";
 import { parseTopology, serializeTopology } from "../_lib/topology-io";
+import type { TemplateSummary } from "../template-actions";
+import { ComponentPalette } from "./component-palette";
+import { TemplatesMenu } from "./templates-menu";
 
 const iconButtonClass =
   "flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30";
 
-export function CanvasToolbar() {
+export function CanvasToolbar({
+  userTemplates,
+}: {
+  userTemplates: TemplateSummary[];
+}) {
   const addComponent = useTopologyStore((s) => s.addComponent);
   const addGroup = useTopologyStore((s) => s.addGroup);
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
   const toggleMiniMap = useTopologyStore((s) => s.toggleMiniMap);
-  const insertTemplate = useTopologyStore((s) => s.insertTemplate);
   const addNote = useTopologyStore((s) => s.addNote);
   const tidyLayout = useTopologyStore((s) => s.tidyLayout);
   const { undo, redo, pastStates, futureStates } = useTopologyTemporalStore(
@@ -150,37 +153,7 @@ export function CanvasToolbar() {
         <TooltipContent side="right">Add group</TooltipContent>
       </Tooltip>
 
-      <Popover>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <PopoverTrigger
-                className={`${iconButtonClass} aria-expanded:bg-accent aria-expanded:text-accent-foreground`}>
-                <LayoutTemplate size={17} />
-              </PopoverTrigger>
-            }
-          />
-          <TooltipContent side="right">Insert template</TooltipContent>
-        </Tooltip>
-        <PopoverContent side="right" align="start" className="w-64 p-1">
-          <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-            Scenario templates
-          </p>
-          {templates.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => insertTemplate(template)}
-              className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-accent">
-              <span className="text-sm font-medium text-foreground">
-                {template.name}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {template.description}
-              </span>
-            </button>
-          ))}
-        </PopoverContent>
-      </Popover>
+      <TemplatesMenu userTemplates={userTemplates} />
 
       <Tooltip>
         <TooltipTrigger onClick={addNote} className={iconButtonClass}>
