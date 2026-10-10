@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireSession } from "@/server/session";
 import { getProjectWithTopology } from "@/server/projects";
+import { listTemplates } from "@/server/templates";
 import { WorkspaceShell } from "./_components/workspace-shell";
 
 export default async function ProjectPage({
@@ -11,7 +12,10 @@ export default async function ProjectPage({
   const { user } = await requireSession();
   const { id } = await params;
 
-  const project = await getProjectWithTopology(user.id, id);
+  const [project, userTemplates] = await Promise.all([
+    getProjectWithTopology(user.id, id),
+    listTemplates(user.id),
+  ]);
   if (!project) notFound();
 
   return (
@@ -21,6 +25,7 @@ export default async function ProjectPage({
       projectName={project.name}
       user={{ name: user.name, email: user.email }}
       initialTopology={{ nodes: project.nodes, edges: project.edges }}
+      userTemplates={userTemplates}
     />
   );
 }
