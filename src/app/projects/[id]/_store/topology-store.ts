@@ -63,7 +63,7 @@ export interface TopologyState {
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
   selectOnly: (id: string) => void;
-  updateNodeCapacity: (id: string, capacity: number) => void;
+  updateNodeCapacity: (id: string, capacity: number | undefined) => void;
   renameNode: (id: string, label: string) => void;
   duplicateNode: (id: string) => void;
   deleteNode: (id: string) => void;
