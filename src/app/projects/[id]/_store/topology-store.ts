@@ -62,6 +62,7 @@ export interface TopologyState {
   addComponent: (component: ComponentDef) => void;
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
+  selectOnly: (id: string) => void;
   updateNodeCapacity: (id: string, capacity: number) => void;
   renameNode: (id: string, label: string) => void;
   duplicateNode: (id: string) => void;
@@ -183,6 +184,30 @@ export function createTopologyStore(
         },
         selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null }),
         selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null }),
+        // Selects one node the way a canvas click would: React Flow's own
+        // `selected` flags (for the node's halo) plus the store id (for the
+        // config panel). Selection-only changes stay out of the undo history.
+        selectOnly: (id) => {
+          const { nodes, edges } = get();
+          get().onNodesChange(
+            nodes.map((n) => ({
+              type: "select" as const,
+              id: n.id,
+              selected: n.id === id,
+            })),
+          );
+          const selectedEdges = edges.filter((e) => e.selected);
+          if (selectedEdges.length > 0) {
+            get().onEdgesChange(
+              selectedEdges.map((e) => ({
+                type: "select" as const,
+                id: e.id,
+                selected: false,
+              })),
+            );
+          }
+          set({ selectedNodeId: id, selectedEdgeId: null });
+        },
         updateNodeCapacity: (id, capacity) =>
           set({
             nodes: get().nodes.map((node) =>
