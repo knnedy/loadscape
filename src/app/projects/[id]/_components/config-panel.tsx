@@ -81,7 +81,10 @@ export function ConfigPanel() {
             type="number"
             value={data.capacity ?? ""}
             onChange={(e) =>
-              updateNodeCapacity(node.id, Number(e.target.value))
+              updateNodeCapacity(
+                node.id,
+                e.target.value === "" ? undefined : Number(e.target.value),
+              )
             }
             className="font-mono"
           />
