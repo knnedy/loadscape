@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { History, Play, Waypoints, Sun, Moon } from "lucide-react";
 import { UserMenu, type AppUser } from "../../_components/user-menu";
 import { ProjectName } from "./project-name";
+import { ReadinessIndicator } from "./readiness-indicator";
 import { SaveStatus } from "./save-status";
 
 export function TopBar({
@@ -54,6 +55,8 @@ export function TopBar({
         </button>
 
         <div className="h-5 w-px bg-border" />
+
+        <ReadinessIndicator />
 
         <button
           className="group flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground transition-transform duration-150 hover:opacity-90 active:scale-[0.97]"
