@@ -29,20 +29,24 @@ export function WorkspaceShell({
   return (
     <TooltipProvider delay={200}>
       <TopologyProvider initialTopology={initialTopology}>
-        <div className="flex h-screen w-full flex-col">
-          <TopBar projectId={projectId} projectName={projectName} user={user} />
-          <div className="flex flex-1 overflow-hidden">
-            <div className="relative flex-1 overflow-hidden">
-              <ReactFlowProvider>
+        <ReactFlowProvider>
+          <div className="flex h-screen w-full flex-col">
+            <TopBar
+              projectId={projectId}
+              projectName={projectName}
+              user={user}
+            />
+            <div className="flex flex-1 overflow-hidden">
+              <div className="relative flex-1 overflow-hidden">
                 <Canvas />
                 <EmptyState />
                 <StatsPanel />
                 <CanvasToolbar userTemplates={userTemplates} />
-              </ReactFlowProvider>
+              </div>
+              <ConfigPanel />
             </div>
-            <ConfigPanel />
           </div>
-        </div>
+        </ReactFlowProvider>
       </TopologyProvider>
     </TooltipProvider>
   );
