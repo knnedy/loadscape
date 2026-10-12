@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import {
   ReactFlow,
   Background,
@@ -27,6 +34,10 @@ import {
   type AppNode,
   type AppEdge,
 } from "../_store/topology-store";
+import {
+  CanvasContextMenu,
+  type ContextMenuTarget,
+} from "./canvas-context-menu";
 
 // Matches the 24px minor dots drawn by the canvas background.
 const SNAP_GRID: [number, number] = [24, 24];
@@ -40,6 +51,7 @@ export function Canvas() {
   const reconnectEdge = useTopologyStore((s) => s.reconnectEdge);
   const selectNode = useTopologyStore((s) => s.selectNode);
   const selectEdge = useTopologyStore((s) => s.selectEdge);
+  const selectOnly = useTopologyStore((s) => s.selectOnly);
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const deleteEdge = useTopologyStore((s) => s.deleteEdge);
   const duplicateNode = useTopologyStore((s) => s.duplicateNode);
@@ -49,6 +61,11 @@ export function Canvas() {
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
   const snapToGrid = useTopologyStore((s) => s.snapToGrid);
   const storeApi = useTopologyStoreApi();
+
+  const [contextMenu, setContextMenu] = useState<ContextMenuTarget | null>(
+    null,
+  );
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
   const nodeTypes = useMemo(
     () => ({
@@ -147,6 +164,36 @@ export function Canvas() {
     [syncSelection],
   );
 
+  // Right-clicking something selects it, unless it is already part of the
+  // current selection, so a multi-selection survives the click.
+  const onNodeContextMenu = useCallback(
+    (event: ReactMouseEvent, node: AppNode) => {
+      event.preventDefault();
+      if (!node.selected) selectOnly(node.id);
+      setContextMenu({
+        kind: "node",
+        id: node.id,
+        x: event.clientX,
+        y: event.clientY,
+      });
+    },
+    [selectOnly],
+  );
+
+  const onEdgeContextMenu = useCallback(
+    (event: ReactMouseEvent, edge: AppEdge) => {
+      event.preventDefault();
+      selectEdge(edge.id);
+      setContextMenu({
+        kind: "edge",
+        id: edge.id,
+        x: event.clientX,
+        y: event.clientY,
+      });
+    },
+    [selectEdge],
+  );
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
@@ -186,6 +233,8 @@ export function Canvas() {
         onSelectionDragStart={beginDragCheckpoint}
         onSelectionDragStop={commitDragCheckpoint}
         onSelectionChange={onSelectionChange}
+        onNodeContextMenu={onNodeContextMenu}
+        onEdgeContextMenu={onEdgeContextMenu}
         deleteKeyCode={null}
         onNodeClick={(_, node) => selectNode(node.id)}
         onEdgeClick={(_, edge) => selectEdge(edge.id)}
@@ -233,6 +282,7 @@ export function Canvas() {
           />
         )}
       </ReactFlow>
+      <CanvasContextMenu target={contextMenu} onClose={closeContextMenu} />
     </div>
   );
 }
