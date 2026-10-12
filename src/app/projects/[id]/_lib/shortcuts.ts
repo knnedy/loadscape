@@ -38,6 +38,7 @@ export const shortcutGroups: ShortcutGroup[] = [
       { label: "Add to the selection", keys: ["mod", "Click"] },
       { label: "Pan the canvas", keys: ["Drag"] },
       { label: "Pan over nodes", keys: ["Space", "Drag"] },
+      { label: "Quick actions on a node or edge", keys: ["Right-click"] },
     ],
   },
   {
