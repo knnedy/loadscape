@@ -227,10 +227,17 @@ export function createTopologyStore(
         duplicateNode: (id) => {
           const original = get().nodes.find((n) => n.id === id);
           if (!original || original.type === "group-container") return;
-          const data = original.data as TopologyNodeData;
-          nodeIdCounter += 1;
-          const newId = `${data.componentId}-${nodeIdCounter}`;
-          const newNode: Node<TopologyNodeData> = {
+
+          let newId: string;
+          if (original.type === "note") {
+            noteIdCounter += 1;
+            newId = `note-${noteIdCounter}`;
+          } else {
+            nodeIdCounter += 1;
+            newId = `${(original.data as TopologyNodeData).componentId}-${nodeIdCounter}`;
+          }
+
+          const newNode = {
             ...original,
             id: newId,
             position: {
@@ -238,8 +245,7 @@ export function createTopologyStore(
               y: original.position.y + 32,
             },
             selected: false,
-            data,
-          };
+          } as AppNode;
           set({ nodes: [...get().nodes, newNode], selectedNodeId: newId });
         },
         deleteNode: (id) => {
