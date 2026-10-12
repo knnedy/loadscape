@@ -37,6 +37,7 @@ import { parseTopology, serializeTopology } from "../_lib/topology-io";
 import type { TemplateSummary } from "../template-actions";
 import { ComponentPalette } from "./component-palette";
 import { TemplatesMenu } from "./templates-menu";
+import { ShortcutsButton } from "./shortcuts-dialog";
 
 const iconButtonClass =
   "flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30";
@@ -279,6 +280,10 @@ export function CanvasToolbar({
         onChange={handleImportJson}
         className="hidden"
       />
+
+      <div className="my-1 h-px w-6 bg-border" />
+
+      <ShortcutsButton />
     </aside>
   );
 }
