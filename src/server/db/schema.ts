@@ -61,6 +61,23 @@ export const topologies = pgTable("topologies", {
     .notNull(),
 });
 
+export const snapshots = pgTable(
+  "snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    nodes: jsonb("nodes").$type<AppNode[]>().notNull().default([]),
+    edges: jsonb("edges").$type<AppEdge[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { precision: 6, withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("snapshots_project_id_idx").on(table.projectId)],
+);
+
 export const templates = pgTable(
   "templates",
   {
@@ -166,14 +183,21 @@ export const usersRelations = relations(users, ({ many }) => ({
   templates: many(templates),
 }));
 
-export const projectsRelations = relations(projects, ({ one }) => ({
+export const projectsRelations = relations(projects, ({ one, many }) => ({
   user: one(users, {
     fields: [projects.userId],
     references: [users.id],
   }),
   topology: one(topologies),
+  snapshots: many(snapshots),
 }));
 
+export const snapshotsRelations = relations(snapshots, ({ one }) => ({
+  project: one(projects, {
+    fields: [snapshots.projectId],
+    references: [projects.id],
+  }),
+}));
 export const topologiesRelations = relations(topologies, ({ one }) => ({
   project: one(projects, {
     fields: [topologies.projectId],
