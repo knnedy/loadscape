@@ -12,6 +12,7 @@ import {
   getCategoryDef,
   getAnnotation,
 } from "@/lib/catalog/components";
+import { BulkEditPanel } from "./bulk-edit-panel";
 
 function CategoryChip({ category }: { category: NodeCategory }) {
   const def = getCategoryDef(category);
@@ -48,12 +49,19 @@ function EndpointDot({ category }: { category?: NodeCategory }) {
 export function ConfigPanel() {
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const selectedEdgeId = useTopologyStore((s) => s.selectedEdgeId);
+  const selectionCount = useTopologyStore(
+    (s) =>
+      s.nodes.filter((n) => n.selected).length +
+      s.edges.filter((e) => e.selected).length,
+  );
   const nodes = useTopologyStore((s) => s.nodes);
   const edges = useTopologyStore((s) => s.edges);
   const updateNodeCapacity = useTopologyStore((s) => s.updateNodeCapacity);
   const updateEdgeLabel = useTopologyStore((s) => s.updateEdgeLabel);
   const updateEdgeStyle = useTopologyStore((s) => s.updateEdgeStyle);
   const updateEdgeDirection = useTopologyStore((s) => s.updateEdgeDirection);
+
+  if (selectionCount > 1) return <BulkEditPanel />;
 
   const node = nodes.find((n) => n.id === selectedNodeId);
   const edge = edges.find((e) => e.id === selectedEdgeId);
