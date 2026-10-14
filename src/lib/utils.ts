@@ -98,3 +98,12 @@ export function normalizeTemplateDescription(raw: unknown): string | null {
   const text = raw.trim().replace(/\s+/g, " ");
   return text.length > MAX_TEMPLATE_DESCRIPTION_LENGTH ? null : text;
 }
+
+export const MAX_SNAPSHOT_NAME_LENGTH = 60;
+
+export function normalizeSnapshotName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const name = raw.trim().replace(/\s+/g, " ");
+  if (name.length === 0 || name.length > MAX_SNAPSHOT_NAME_LENGTH) return null;
+  return name;
+}
