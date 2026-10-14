@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { History, Play, Waypoints, Sun, Moon } from "lucide-react";
+import { Play, Waypoints, Sun, Moon } from "lucide-react";
 import { UserMenu, type AppUser } from "../../_components/user-menu";
+import type { SnapshotSummary } from "../snapshot-actions";
+import { HistoryMenu } from "./history-menu";
 import { ProjectName } from "./project-name";
 import { ReadinessIndicator } from "./readiness-indicator";
 import { SaveStatus } from "./save-status";
@@ -12,10 +14,12 @@ export function TopBar({
   projectId,
   projectName,
   user,
+  snapshots,
 }: {
   projectId: string;
   projectName: string;
   user: AppUser;
+  snapshots: SnapshotSummary[];
 }) {
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -40,10 +44,7 @@ export function TopBar({
       <div className="flex items-center gap-3">
         <SaveStatus projectId={projectId} />
 
-        <button className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-          <History size={14} />
-          History
-        </button>
+        <HistoryMenu projectId={projectId} snapshots={snapshots} />
 
         <button
           onClick={() => setTheme(isDark ? "light" : "dark")}
