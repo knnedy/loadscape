@@ -64,6 +64,11 @@ export interface TopologyState {
   selectEdge: (id: string | null) => void;
   selectOnly: (id: string) => void;
   updateNodeCapacity: (id: string, capacity: number | undefined) => void;
+  updateSelectedCapacity: (capacity: number | undefined) => void;
+  updateSelectedEdges: (patch: {
+    style?: EdgeStyle;
+    direction?: EdgeDirection;
+  }) => void;
   renameNode: (id: string, label: string) => void;
   duplicateNode: (id: string) => void;
   deleteNode: (id: string) => void;
@@ -215,6 +220,30 @@ export function createTopologyStore(
                 ? { ...node, data: { ...node.data, capacity } }
                 : node,
             ),
+          }),
+        // Bulk edits read React Flow's `selected` flags, like deleteSelection,
+        // and write everything in one `set` so it is a single undo step.
+        updateSelectedCapacity: (capacity) =>
+          set({
+            nodes: get().nodes.map((node) =>
+              node.selected && node.type === "component"
+                ? ({ ...node, data: { ...node.data, capacity } } as AppNode)
+                : node,
+            ),
+          }),
+        updateSelectedEdges: (patch) =>
+          set({
+            edges: get().edges.map((edge) => {
+              if (!edge.selected) return edge;
+              const data = {
+                ...edge.data!,
+                ...(patch.style ? { style: patch.style } : {}),
+                ...(patch.direction ? { direction: patch.direction } : {}),
+              };
+              return patch.direction
+                ? { ...edge, data, ...markersForDirection(patch.direction) }
+                : { ...edge, data };
+            }),
           }),
         renameNode: (id, label) =>
           set({
