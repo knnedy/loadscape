@@ -11,6 +11,7 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { AppUser } from "../../_components/user-menu";
 import type { InitialTopology } from "../_store/topology-store";
+import type { SnapshotSummary } from "../snapshot-actions";
 import type { TemplateSummary } from "../template-actions";
 
 export function WorkspaceShell({
@@ -19,12 +20,14 @@ export function WorkspaceShell({
   user,
   initialTopology,
   userTemplates,
+  snapshots,
 }: {
   projectId: string;
   projectName: string;
   user: AppUser;
   initialTopology: InitialTopology;
   userTemplates: TemplateSummary[];
+  snapshots: SnapshotSummary[];
 }) {
   return (
     <TooltipProvider delay={200}>
@@ -35,6 +38,7 @@ export function WorkspaceShell({
               projectId={projectId}
               projectName={projectName}
               user={user}
+              snapshots={snapshots}
             />
             <div className="flex flex-1 overflow-hidden">
               <div className="relative flex-1 overflow-hidden">
