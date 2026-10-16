@@ -34,6 +34,8 @@ import {
   type AppNode,
   type AppEdge,
 } from "../_store/topology-store";
+import { useAlignmentGuides } from "../_lib/use-alignment-guides";
+import { AlignmentGuides } from "./alignment-guides";
 import {
   CanvasContextMenu,
   type ContextMenuTarget,
@@ -45,7 +47,6 @@ const SNAP_GRID: [number, number] = [24, 24];
 export function Canvas() {
   const nodes = useTopologyStore((s) => s.nodes);
   const edges = useTopologyStore((s) => s.edges);
-  const onNodesChange = useTopologyStore((s) => s.onNodesChange);
   const onEdgesChange = useTopologyStore((s) => s.onEdgesChange);
   const onConnect = useTopologyStore((s) => s.onConnect);
   const reconnectEdge = useTopologyStore((s) => s.reconnectEdge);
@@ -61,6 +62,8 @@ export function Canvas() {
   const showMiniMap = useTopologyStore((s) => s.showMiniMap);
   const snapToGrid = useTopologyStore((s) => s.snapToGrid);
   const storeApi = useTopologyStoreApi();
+
+  const { guides, handleNodesChange, clearGuides } = useAlignmentGuides();
 
   const [contextMenu, setContextMenu] = useState<ContextMenuTarget | null>(
     null,
@@ -139,6 +142,7 @@ export function Canvas() {
 
   const onNodeDragStop = useCallback(
     (_: unknown, node: AppNode) => {
+      clearGuides();
       if (node.type !== "group-container") {
         const overlappingGroup = getIntersectingNodes(node).find(
           (n) => n.type === "group-container",
@@ -150,8 +154,19 @@ export function Canvas() {
       }
       commitDragCheckpoint();
     },
-    [getIntersectingNodes, getInternalNode, reparentNode, commitDragCheckpoint],
+    [
+      clearGuides,
+      getIntersectingNodes,
+      getInternalNode,
+      reparentNode,
+      commitDragCheckpoint,
+    ],
   );
+
+  const onSelectionDragStop = useCallback(() => {
+    clearGuides();
+    commitDragCheckpoint();
+  }, [clearGuides, commitDragCheckpoint]);
 
   const onSelectionChange = useCallback<
     OnSelectionChangeFunc<AppNode, AppEdge>
@@ -221,7 +236,7 @@ export function Canvas() {
         edgeTypes={edgeTypes}
         snapToGrid={snapToGrid}
         snapGrid={SNAP_GRID}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
@@ -231,7 +246,7 @@ export function Canvas() {
         onNodeDragStart={beginDragCheckpoint}
         onNodeDragStop={onNodeDragStop}
         onSelectionDragStart={beginDragCheckpoint}
-        onSelectionDragStop={commitDragCheckpoint}
+        onSelectionDragStop={onSelectionDragStop}
         onSelectionChange={onSelectionChange}
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
@@ -281,6 +296,7 @@ export function Canvas() {
             zoomable
           />
         )}
+        <AlignmentGuides guides={guides} />
       </ReactFlow>
       <CanvasContextMenu target={contextMenu} onClose={closeContextMenu} />
     </div>
