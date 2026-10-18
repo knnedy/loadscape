@@ -19,6 +19,7 @@ import {
   createSelectionSlice,
   type SelectionSlice,
 } from "./slices/selection-slice";
+import { createUiSlice, type UiSlice } from "./slices/ui-slice";
 import { createViewSlice, type ViewSlice } from "./slices/view-slice";
 
 // Shared with the canvas's drag-checkpoint logic, so both sides agree on
@@ -42,7 +43,8 @@ export type TopologyState = NodesSlice &
   SelectionSlice &
   AnnotationsSlice &
   DiagramSlice &
-  ViewSlice;
+  ViewSlice &
+  UiSlice;
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
 
@@ -60,6 +62,7 @@ export function createTopologyStore(
         ...createAnnotationsSlice(counters)(...args),
         ...createDiagramSlice(counters)(...args),
         ...createViewSlice(...args),
+        ...createUiSlice(...args),
       }),
       {
         limit: HISTORY_LIMIT,
