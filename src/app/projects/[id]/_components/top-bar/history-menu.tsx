@@ -11,18 +11,18 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { MAX_SNAPSHOT_NAME_LENGTH } from "@/lib/utils";
-import { RelativeTime } from "../../_components/relative-time";
+import { RelativeTime } from "../../../_components/relative-time";
 import {
   useTopologyStore,
   useTopologyStoreApi,
-} from "../_store/topology-provider";
+} from "../../_store/topology-provider";
 import {
   createSnapshot,
   deleteSnapshot,
   restoreSnapshot,
   type SnapshotActionError,
   type SnapshotSummary,
-} from "../_actions/snapshot-actions";
+} from "../../_actions/snapshot-actions";
 
 function describeError(error: SnapshotActionError) {
   switch (error) {

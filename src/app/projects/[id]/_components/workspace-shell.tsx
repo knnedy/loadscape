@@ -1,6 +1,6 @@
 "use client";
 
-import { TopBar } from "./top-bar";
+import { TopBar } from "./top-bar/top-bar";
 import { CanvasToolbar } from "./toolbar/canvas-toolbar";
 import { Canvas } from "./canvas/canvas";
 import { ConfigPanel } from "./inspector/config-panel";

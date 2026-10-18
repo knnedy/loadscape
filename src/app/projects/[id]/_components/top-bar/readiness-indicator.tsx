@@ -8,9 +8,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { analyzeReadiness } from "../_lib/topology-readiness";
-import { useFocusNode } from "../_hooks/use-focus-node";
-import { useTopologyStore } from "../_store/topology-provider";
+import { analyzeReadiness } from "../../_lib/topology-readiness";
+import { useFocusNode } from "../../_hooks/use-focus-node";
+import { useTopologyStore } from "../../_store/topology-provider";
 
 const pill =
   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors";

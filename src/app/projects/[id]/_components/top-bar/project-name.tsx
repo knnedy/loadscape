@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { MAX_PROJECT_NAME_LENGTH, normalizeProjectName } from "@/lib/utils";
-import { renameProject } from "../../actions";
+import { renameProject } from "../../../actions";
 
 function Initial({ name }: { name: string }) {
   return (
