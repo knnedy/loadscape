@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Keyboard } from "lucide-react";
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTopologyStore } from "../../_store/topology-provider";
 import { formatKey, shortcutGroups } from "../../_lib/shortcuts";
 
 function Keys({ keys, isMac }: { keys: string[]; isMac: boolean }) {
@@ -31,7 +32,10 @@ function Keys({ keys, isMac }: { keys: string[]; isMac: boolean }) {
 }
 
 export function ShortcutsButton() {
-  const [open, setOpen] = useState(false);
+  const open = useTopologyStore((s) => s.activePanel === "shortcuts");
+  const openPanel = useTopologyStore((s) => s.openPanel);
+  const closePanel = useTopologyStore((s) => s.closePanel);
+  const togglePanel = useTopologyStore((s) => s.togglePanel);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -44,11 +48,11 @@ export function ShortcutsButton() {
         return;
       }
       e.preventDefault();
-      setOpen((current) => !current);
+      togglePanel("shortcuts");
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [togglePanel]);
 
   // Only read while the dialog is open, so it never runs during server
   // rendering.
@@ -58,7 +62,7 @@ export function ShortcutsButton() {
     <>
       <Tooltip>
         <TooltipTrigger
-          onClick={() => setOpen(true)}
+          onClick={() => openPanel("shortcuts")}
           className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
           <Keyboard size={17} />
         </TooltipTrigger>
@@ -67,7 +71,12 @@ export function ShortcutsButton() {
         </TooltipContent>
       </Tooltip>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (next) openPanel("shortcuts");
+          else closePanel();
+        }}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Keyboard shortcuts</DialogTitle>
