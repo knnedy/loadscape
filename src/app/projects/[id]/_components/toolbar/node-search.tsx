@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Search } from "lucide-react";
 import {
   Command,
@@ -138,7 +138,9 @@ function NodeResults({ onPick }: { onPick: (id: string) => void }) {
 }
 
 export function NodeSearch() {
-  const [open, setOpen] = useState(false);
+  const activePanel = useTopologyStore((s) => s.activePanel);
+  const openPanel = useTopologyStore((s) => s.openPanel);
+  const closePanel = useTopologyStore((s) => s.closePanel);
   const focusNode = useFocusNode();
 
   useEffect(() => {
@@ -152,19 +154,24 @@ export function NodeSearch() {
         return;
       }
       e.preventDefault();
-      setOpen(true);
+      openPanel("search");
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [openPanel]);
 
   function handlePick(id: string) {
-    setOpen(false);
+    closePanel();
     focusNode(id);
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={activePanel === "search"}
+      onOpenChange={(next) => {
+        if (next) openPanel("search");
+        else if (activePanel === "search") closePanel();
+      }}>
       <Tooltip>
         <TooltipTrigger
           render={
