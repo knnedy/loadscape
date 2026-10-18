@@ -19,7 +19,7 @@ import {
   deleteTemplate,
   getTemplate,
   type TemplateSummary,
-} from "../template-actions";
+} from "../_actions/template-actions";
 import {
   SaveTemplateDialog,
   describeTemplateError,

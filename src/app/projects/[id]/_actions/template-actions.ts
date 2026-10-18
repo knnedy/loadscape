@@ -11,8 +11,8 @@ import {
   normalizeTemplateDescription,
   normalizeTemplateName,
 } from "@/lib/utils";
-import { validateTopology } from "./_lib/topology-io";
-import type { AppEdge, AppNode } from "./_store/topology-store";
+import { validateTopology } from "../_lib/topology-io";
+import type { AppEdge, AppNode } from "../_store/topology-store";
 
 const MAX_TEMPLATES_PER_USER = 50;
 

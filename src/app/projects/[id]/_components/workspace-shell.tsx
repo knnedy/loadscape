@@ -11,8 +11,8 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { AppUser } from "../../_components/user-menu";
 import type { InitialTopology } from "../_store/topology-store";
-import type { SnapshotSummary } from "../snapshot-actions";
-import type { TemplateSummary } from "../template-actions";
+import type { SnapshotSummary } from "../_actions/snapshot-actions";
+import type { TemplateSummary } from "../_actions/template-actions";
 
 export function WorkspaceShell({
   projectId,

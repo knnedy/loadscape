@@ -34,7 +34,7 @@ import { useReactFlow } from "@xyflow/react";
 import { renderCanvasToPng } from "@/lib/export-image";
 import { downloadText, downloadUrl } from "@/lib/download";
 import { parseTopology, serializeTopology } from "../_lib/topology-io";
-import type { TemplateSummary } from "../template-actions";
+import type { TemplateSummary } from "../_actions/template-actions";
 import { ComponentPalette } from "./component-palette";
 import { TemplatesMenu } from "./templates-menu";
 import { ShortcutsButton } from "./shortcuts-dialog";

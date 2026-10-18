@@ -5,7 +5,7 @@ import { db } from "@/server/db";
 import { projects, topologies } from "@/server/db/schema";
 import { getSession } from "@/server/session";
 import { isUuid } from "@/lib/utils";
-import { validateTopology } from "./_lib/topology-io";
+import { validateTopology } from "../_lib/topology-io";
 
 export type SaveResult =
   | { ok: true; savedAt: string }

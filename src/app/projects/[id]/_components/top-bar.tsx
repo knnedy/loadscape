@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Play, Waypoints, Sun, Moon } from "lucide-react";
 import { UserMenu, type AppUser } from "../../_components/user-menu";
-import type { SnapshotSummary } from "../snapshot-actions";
+import type { SnapshotSummary } from "../_actions/snapshot-actions";
 import { HistoryMenu } from "./history-menu";
 import { ProjectName } from "./project-name";
 import { ReadinessIndicator } from "./readiness-indicator";

@@ -22,7 +22,7 @@ import {
   restoreSnapshot,
   type SnapshotActionError,
   type SnapshotSummary,
-} from "../snapshot-actions";
+} from "../_actions/snapshot-actions";
 
 function describeError(error: SnapshotActionError) {
   switch (error) {

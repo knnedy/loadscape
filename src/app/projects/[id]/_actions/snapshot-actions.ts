@@ -7,8 +7,8 @@ import { projects, snapshots } from "@/server/db/schema";
 import { getSession } from "@/server/session";
 import { getSnapshotTopology } from "@/server/snapshots";
 import { isUuid, normalizeSnapshotName } from "@/lib/utils";
-import { validateTopology } from "./_lib/topology-io";
-import type { AppEdge, AppNode } from "./_store/topology-store";
+import { validateTopology } from "../_lib/topology-io";
+import type { AppEdge, AppNode } from "../_store/topology-store";
 
 const MAX_SNAPSHOTS_PER_PROJECT = 30;
 
