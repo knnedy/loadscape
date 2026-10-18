@@ -5,6 +5,7 @@ import {
   reconnectEdge,
   type Connection,
   type Edge,
+  type EdgeChange,
 } from "@xyflow/react";
 import type { StateCreator } from "zustand";
 import type {
@@ -28,7 +29,7 @@ export function markersForDirection(direction: EdgeDirection) {
 
 export interface EdgesSlice {
   edges: AppEdge[];
-  onEdgesChange: TopologyState["onEdgesChange"];
+  onEdgesChange: (changes: EdgeChange<AppEdge>[]) => void;
   onConnect: (connection: Connection) => void;
   reconnectEdge: (
     oldEdge: Edge<TopologyEdgeData>,
