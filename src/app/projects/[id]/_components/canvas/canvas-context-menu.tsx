@@ -17,8 +17,8 @@ import type {
   TopologyNodeData,
 } from "@/lib/types/topology";
 import { cn } from "@/lib/utils";
-import { formatKey } from "../_lib/shortcuts";
-import { useTopologyStore } from "../_store/topology-provider";
+import { formatKey } from "../../_lib/shortcuts";
+import { useTopologyStore } from "../../_store/topology-provider";
 
 export interface ContextMenuTarget {
   kind: "node" | "edge";

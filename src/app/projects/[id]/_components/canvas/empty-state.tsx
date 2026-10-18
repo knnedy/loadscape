@@ -2,7 +2,7 @@
 
 import { useReactFlow } from "@xyflow/react";
 import { templates } from "@/lib/catalog/templates";
-import { useTopologyStore } from "../_store/topology-provider";
+import { useTopologyStore } from "../../_store/topology-provider";
 
 export function EmptyState() {
   const isEmpty = useTopologyStore((s) => s.nodes.length === 0);

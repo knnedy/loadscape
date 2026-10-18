@@ -28,13 +28,13 @@ import { isConnectionValid } from "@/lib/topology-validation";
 import {
   useTopologyStore,
   useTopologyStoreApi,
-} from "../_store/topology-provider";
+} from "../../_store/topology-provider";
 import {
   HISTORY_LIMIT,
   type AppNode,
   type AppEdge,
-} from "../_store/topology-store";
-import { useAlignmentGuides } from "../_hooks/use-alignment-guides";
+} from "../../_store/topology-store";
+import { useAlignmentGuides } from "../../_hooks/use-alignment-guides";
 import { AlignmentGuides } from "./alignment-guides";
 import {
   CanvasContextMenu,

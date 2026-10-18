@@ -1,7 +1,7 @@
 "use client";
 
 import { ViewportPortal, useStore } from "@xyflow/react";
-import type { Guides } from "../_lib/alignment";
+import type { Guides } from "../../_lib/alignment";
 
 // A little overhang past the aligned nodes, in screen pixels.
 const OVERHANG_PX = 10;
