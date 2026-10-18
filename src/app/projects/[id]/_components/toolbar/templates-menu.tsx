@@ -1,164 +1,210 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { useReactFlow } from "@xyflow/react";
-import { LayoutTemplate, Plus, Trash2 } from "lucide-react";
+import { History, RotateCcw, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { MAX_SNAPSHOT_NAME_LENGTH } from "@/lib/utils";
+import { RelativeTime } from "../../../_components/relative-time";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { templates as builtInTemplates } from "@/lib/catalog/templates";
-import { useTopologyStore } from "../../_store/topology-provider";
+  useTopologyStore,
+  useTopologyStoreApi,
+} from "../../_store/topology-provider";
 import {
-  deleteTemplate,
-  getTemplate,
-  type TemplateSummary,
-} from "../../_actions/template-actions";
-import {
-  SaveTemplateDialog,
-  describeTemplateError,
-} from "./save-template-dialog";
+  createSnapshot,
+  deleteSnapshot,
+  restoreSnapshot,
+  type SnapshotActionError,
+  type SnapshotSummary,
+} from "../../_actions/snapshot-actions";
 
-const triggerClass =
-  "flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground";
-const rowClass =
-  "flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-accent disabled:opacity-60";
+function describeError(error: SnapshotActionError) {
+  switch (error) {
+    case "unauthorized":
+      return "Your session has expired. Sign in again in another tab, then retry.";
+    case "not_found":
+      return "That snapshot no longer exists.";
+    case "limit":
+      return "You've reached 30 snapshots for this project. Delete one first.";
+    case "invalid":
+      return `Use a name up to ${MAX_SNAPSHOT_NAME_LENGTH} characters.`;
+  }
+}
 
-function TemplatesPanel({
-  userTemplates,
+type Confirming = { kind: "restore" | "delete"; id: string };
+
+function HistoryPanel({
+  projectId,
+  snapshots,
 }: {
-  userTemplates: TemplateSummary[];
+  projectId: string;
+  snapshots: SnapshotSummary[];
 }) {
   const { fitView } = useReactFlow();
-  const insertTemplate = useTopologyStore((s) => s.insertTemplate);
-  const insertTopology = useTopologyStore((s) => s.insertTopology);
+  const storeApi = useTopologyStoreApi();
+  const replaceTopology = useTopologyStore((s) => s.replaceTopology);
   const hasNodes = useTopologyStore((s) => s.nodes.length > 0);
-  const openPanel = useTopologyStore((s) => s.openPanel);
   const closePanel = useTopologyStore((s) => s.closePanel);
 
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function frame() {
-    requestAnimationFrame(() =>
-      fitView({ maxZoom: 1, padding: 0.4, duration: 300 }),
-    );
-  }
+  const defaultName = `Snapshot ${snapshots.length + 1}`;
 
-  function handleInsertBuiltIn(template: (typeof builtInTemplates)[number]) {
-    insertTemplate(template);
-    closePanel();
-    frame();
-  }
-
-  function handleInsertOwn(id: string) {
+  function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
+    const { nodes, edges } = storeApi.getState();
     startTransition(async () => {
-      const result = await getTemplate(id);
+      const result = await createSnapshot(
+        projectId,
+        name.trim() || defaultName,
+        { nodes, edges },
+      );
       if (!result.ok) {
-        setError(describeTemplateError(result.error));
+        setError(describeError(result.error));
         return;
       }
-      insertTopology(result.nodes, result.edges);
+      setName("");
+    });
+  }
+
+  function handleRestore(id: string) {
+    setError(null);
+    startTransition(async () => {
+      const result = await restoreSnapshot(id);
+      setConfirming(null);
+      if (!result.ok) {
+        setError(describeError(result.error));
+        return;
+      }
+      replaceTopology(result.nodes, result.edges);
       closePanel();
-      frame();
+      requestAnimationFrame(() =>
+        fitView({ maxZoom: 1, padding: 0.4, duration: 300 }),
+      );
     });
   }
 
   function handleDelete(id: string) {
     setError(null);
     startTransition(async () => {
-      const result = await deleteTemplate(id);
-      setConfirmingId(null);
-      if (!result.ok) setError(describeTemplateError(result.error));
+      const result = await deleteSnapshot(id);
+      setConfirming(null);
+      if (!result.ok) setError(describeError(result.error));
     });
   }
 
   return (
     <>
-      <div className="max-h-96 overflow-y-auto">
-        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-          My templates
+      <form onSubmit={handleSave} className="flex gap-1.5">
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={MAX_SNAPSHOT_NAME_LENGTH}
+          placeholder={defaultName}
+          aria-label="Snapshot name"
+          className="h-8 text-sm"
+        />
+        <Button
+          type="submit"
+          size="sm"
+          disabled={pending || !hasNodes}
+          className="h-8 shrink-0">
+          Save
+        </Button>
+      </form>
+
+      <div className="h-px bg-border" />
+
+      {snapshots.length === 0 ? (
+        <p className="py-2 text-xs text-muted-foreground">
+          No snapshots yet. Save one before a risky change, and come back to it
+          any time.
         </p>
-        {userTemplates.length === 0 ? (
-          <p className="px-2 pb-2 text-xs text-muted-foreground">
-            Save the current diagram to reuse it in any project.
-          </p>
-        ) : (
-          userTemplates.map((template) => (
-            <div key={template.id} className="group flex items-center gap-1">
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => handleInsertOwn(template.id)}
-                className={`${rowClass} min-w-0 flex-1`}>
-                <span className="w-full truncate text-sm font-medium text-foreground">
-                  {template.name}
-                </span>
-                {template.description && (
-                  <span className="w-full truncate text-xs text-muted-foreground">
-                    {template.description}
-                  </span>
+      ) : (
+        <ul className="-mx-2 max-h-72 overflow-y-auto">
+          {snapshots.map((snapshot) => {
+            const isConfirming = confirming?.id === snapshot.id;
+            return (
+              <li
+                key={snapshot.id}
+                className="group flex items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-accent/60">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {snapshot.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <RelativeTime date={snapshot.createdAt} />
+                  </p>
+                </div>
+
+                {isConfirming ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() =>
+                        confirming.kind === "restore"
+                          ? handleRestore(snapshot.id)
+                          : handleDelete(snapshot.id)
+                      }
+                      className={
+                        confirming.kind === "restore"
+                          ? "shrink-0 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                          : "shrink-0 rounded-md px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                      }>
+                      {confirming.kind === "restore"
+                        ? "Replace diagram?"
+                        : "Delete?"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(null)}
+                      className="shrink-0 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent">
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfirming({ kind: "restore", id: snapshot.id })
+                      }
+                      className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent">
+                      <RotateCcw size={12} />
+                      Restore
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${snapshot.name}`}
+                      onClick={() =>
+                        setConfirming({ kind: "delete", id: snapshot.id })
+                      }
+                      className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:text-destructive focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                      <Trash2 size={14} />
+                    </button>
+                  </>
                 )}
-              </button>
-              {confirmingId === template.id ? (
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => handleDelete(template.id)}
-                  className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10">
-                  Delete?
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  aria-label={`Delete ${template.name}`}
-                  onClick={() => setConfirmingId(template.id)}
-                  className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:text-destructive focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                  <Trash2 size={14} />
-                </button>
-              )}
-            </div>
-          ))
-        )}
-        <button
-          type="button"
-          disabled={!hasNodes}
-          onClick={() => openPanel("save-template")}
-          className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent disabled:opacity-40">
-          <Plus size={14} className="text-muted-foreground" />
-          Save current diagram...
-        </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-        <div className="my-1 h-px bg-border" />
-
-        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-          Scenario templates
-        </p>
-        {builtInTemplates.map((template) => (
-          <button
-            key={template.id}
-            type="button"
-            onClick={() => handleInsertBuiltIn(template)}
-            className={rowClass}>
-            <span className="text-sm font-medium text-foreground">
-              {template.name}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {template.description}
-            </span>
-          </button>
-        ))}
-      </div>
       {error && (
-        <p role="alert" className="px-2 py-1.5 text-xs text-destructive">
+        <p role="alert" className="text-xs text-destructive">
           {error}
         </p>
       )}
@@ -166,41 +212,56 @@ function TemplatesPanel({
   );
 }
 
-export function TemplatesMenu({
-  userTemplates,
+export function HistoryDialog({
+  projectId,
+  snapshots,
 }: {
-  userTemplates: TemplateSummary[];
+  projectId: string;
+  snapshots: SnapshotSummary[];
 }) {
-  const activePanel = useTopologyStore((s) => s.activePanel);
+  const open = useTopologyStore((s) => s.activePanel === "history");
   const openPanel = useTopologyStore((s) => s.openPanel);
   const closePanel = useTopologyStore((s) => s.closePanel);
 
   return (
-    <>
-      <Popover
-        open={activePanel === "templates"}
-        onOpenChange={(next) => {
-          if (next) openPanel("templates");
-          else if (activePanel === "templates") closePanel();
-        }}>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <PopoverTrigger className={triggerClass}>
-                <LayoutTemplate size={17} />
-              </PopoverTrigger>
-            }
-          />
-          <TooltipContent side="right">Templates</TooltipContent>
-        </Tooltip>
-        <PopoverContent side="right" align="start" className="w-72 p-1">
-          <TemplatesPanel userTemplates={userTemplates} />
-        </PopoverContent>
-      </Popover>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) openPanel("history");
+        else closePanel();
+      }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Version history</DialogTitle>
+          <DialogDescription>
+            Save a snapshot before a risky change and restore it any time.
+          </DialogDescription>
+        </DialogHeader>
+        <HistoryPanel projectId={projectId} snapshots={snapshots} />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-      {activePanel === "save-template" && (
-        <SaveTemplateDialog onClose={closePanel} />
-      )}
+export function HistoryMenu({
+  projectId,
+  snapshots,
+}: {
+  projectId: string;
+  snapshots: SnapshotSummary[];
+}) {
+  const openPanel = useTopologyStore((s) => s.openPanel);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => openPanel("history")}
+        className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+        <History size={14} />
+        History
+      </button>
+      <HistoryDialog projectId={projectId} snapshots={snapshots} />
     </>
   );
 }
