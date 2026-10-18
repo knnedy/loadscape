@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Plus,
   BoxSelect,
@@ -56,31 +56,21 @@ export function CanvasToolbar({
   const hasNodes = useTopologyStore((s) => s.nodes.length > 0);
   const snapToGrid = useTopologyStore((s) => s.snapToGrid);
   const toggleSnapToGrid = useTopologyStore((s) => s.toggleSnapToGrid);
+  const activePanel = useTopologyStore((s) => s.activePanel);
+  const openPanel = useTopologyStore((s) => s.openPanel);
+  const closePanel = useTopologyStore((s) => s.closePanel);
 
-  const [open, setOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const { exportPng, exportJson, openImportPicker } = useDiagramFiles();
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setOpen((v) => !v);
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        if (e.shiftKey) redo();
-        else undo();
-        return;
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
   return (
     <aside className="absolute top-1/2 left-4 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={activePanel === "palette"}
+        onOpenChange={(next) => {
+          if (next) openPanel("palette");
+          else if (activePanel === "palette") closePanel();
+        }}>
         <Tooltip>
           <TooltipTrigger
             render={
@@ -97,7 +87,7 @@ export function CanvasToolbar({
           <ComponentPalette
             onPick={(component) => {
               addComponent(component);
-              setOpen(false);
+              closePanel();
             }}
           />
         </PopoverContent>
