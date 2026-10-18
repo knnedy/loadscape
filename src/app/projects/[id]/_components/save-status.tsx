@@ -2,7 +2,7 @@
 
 import { AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAutosave } from "../_lib/use-autosave";
+import { useAutosave } from "../_hooks/use-autosave";
 
 const pill =
   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors";

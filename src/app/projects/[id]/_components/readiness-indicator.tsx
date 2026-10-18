@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { analyzeReadiness } from "../_lib/topology-readiness";
-import { useFocusNode } from "../_lib/use-focus-node";
+import { useFocusNode } from "../_hooks/use-focus-node";
 import { useTopologyStore } from "../_store/topology-provider";
 
 const pill =

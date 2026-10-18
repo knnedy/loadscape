@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useReactFlow, type NodeChange } from "@xyflow/react";
 import { useTopologyStore } from "../_store/topology-provider";
 import type { AppNode } from "../_store/topology-store";
-import { computeAlignment, type Box, type Guides } from "./alignment";
+import { computeAlignment, type Box, type Guides } from "../_lib/alignment";
 
 const SNAP_DISTANCE_PX = 6;
 const NO_GUIDES: Guides = { vertical: null, horizontal: null };

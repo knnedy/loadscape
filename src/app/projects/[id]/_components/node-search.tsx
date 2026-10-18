@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { getCategoryDef } from "@/lib/catalog/components";
 import type { TopologyNodeData } from "@/lib/types/topology";
-import { useFocusNode } from "../_lib/use-focus-node";
+import { useFocusNode } from "../_hooks/use-focus-node";
 import { useTopologyStore } from "../_store/topology-provider";
 import type { AppNode } from "../_store/topology-store";
 
