@@ -41,7 +41,7 @@ import {
   type ContextMenuTarget,
 } from "./canvas-context-menu";
 
-// Matches the 24px minor dots drawn by the canvas background.
+// Matches the 24px dots drawn by the canvas background.
 const SNAP_GRID: [number, number] = [24, 24];
 
 export function Canvas() {
@@ -261,14 +261,6 @@ export function Canvas() {
         fitViewOptions={{ maxZoom: 1, padding: 0.4 }}
         connectionMode={ConnectionMode.Loose}>
         <Background
-          id="grid-major"
-          variant={BackgroundVariant.Lines}
-          gap={120}
-          lineWidth={1}
-          color="color-mix(in oklch, var(--canvas-dot) 35%, transparent)"
-        />
-        <Background
-          id="grid-minor"
           variant={BackgroundVariant.Dots}
           gap={24}
           size={1.5}
