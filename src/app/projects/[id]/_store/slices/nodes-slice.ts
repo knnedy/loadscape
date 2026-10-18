@@ -1,4 +1,4 @@
-import { applyNodeChanges, type Node } from "@xyflow/react";
+import { applyNodeChanges, type Node, type NodeChange } from "@xyflow/react";
 import type { StateCreator } from "zustand";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import type { ComponentDef } from "@/lib/catalog/components";
@@ -8,7 +8,7 @@ import type { AppNode, TopologyState } from "../topology-store";
 
 export interface NodesSlice {
   nodes: AppNode[];
-  onNodesChange: TopologyState["onNodesChange"];
+  onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   addComponent: (component: ComponentDef) => void;
   updateNodeCapacity: (id: string, capacity: number | undefined) => void;
   updateSelectedCapacity: (capacity: number | undefined) => void;
