@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { categories } from "@/lib/catalog/components";
-import { computeTopologyStats } from "../_lib/topology-stats";
-import { useTopologyStore } from "../_store/topology-provider";
+import { computeTopologyStats } from "../../_lib/topology-stats";
+import { useTopologyStore } from "../../_store/topology-provider";
 
 export function StatsPanel() {
   const nodes = useTopologyStore((s) => s.nodes);

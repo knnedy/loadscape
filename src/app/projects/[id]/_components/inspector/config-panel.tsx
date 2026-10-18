@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { protocolPresets } from "@/lib/catalog/protocols";
 import { capacityPresets } from "@/lib/catalog/capacity-presets";
-import { useTopologyStore } from "../_store/topology-provider";
+import { useTopologyStore } from "../../_store/topology-provider";
 import type { NodeCategory, TopologyNodeData } from "@/lib/types/topology";
 import {
   componentCatalog,

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { capacityPresets } from "@/lib/catalog/capacity-presets";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import { cn } from "@/lib/utils";
-import { useTopologyStore } from "../_store/topology-provider";
+import { useTopologyStore } from "../../_store/topology-provider";
 
 const EDGE_STYLES = ["sync", "async"] as const;
 const EDGE_DIRECTIONS = ["forward", "bidirectional", "none"] as const;

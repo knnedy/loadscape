@@ -3,9 +3,9 @@
 import { TopBar } from "./top-bar";
 import { CanvasToolbar } from "./canvas-toolbar";
 import { Canvas } from "./canvas/canvas";
-import { ConfigPanel } from "./config-panel";
+import { ConfigPanel } from "./inspector/config-panel";
 import { EmptyState } from "./canvas/empty-state";
-import { StatsPanel } from "./stats-panel";
+import { StatsPanel } from "./inspector/stats-panel";
 import { TopologyProvider } from "../_store/topology-provider";
 import { ReactFlowProvider } from "@xyflow/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
