@@ -30,7 +30,7 @@ const triggerClass =
 const rowClass =
   "flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-accent disabled:opacity-60";
 
-export function TemplatesMenu({
+function TemplatesPanel({
   userTemplates,
 }: {
   userTemplates: TemplateSummary[];
@@ -39,9 +39,9 @@ export function TemplatesMenu({
   const insertTemplate = useTopologyStore((s) => s.insertTemplate);
   const insertTopology = useTopologyStore((s) => s.insertTopology);
   const hasNodes = useTopologyStore((s) => s.nodes.length > 0);
+  const openPanel = useTopologyStore((s) => s.openPanel);
+  const closePanel = useTopologyStore((s) => s.closePanel);
 
-  const [open, setOpen] = useState(false);
-  const [saveOpen, setSaveOpen] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -52,17 +52,9 @@ export function TemplatesMenu({
     );
   }
 
-  function handleOpenChange(next: boolean) {
-    setOpen(next);
-    if (!next) {
-      setConfirmingId(null);
-      setError(null);
-    }
-  }
-
   function handleInsertBuiltIn(template: (typeof builtInTemplates)[number]) {
     insertTemplate(template);
-    setOpen(false);
+    closePanel();
     frame();
   }
 
@@ -75,7 +67,7 @@ export function TemplatesMenu({
         return;
       }
       insertTopology(result.nodes, result.edges);
-      setOpen(false);
+      closePanel();
       frame();
     });
   }
@@ -91,7 +83,106 @@ export function TemplatesMenu({
 
   return (
     <>
-      <Popover open={open} onOpenChange={handleOpenChange}>
+      <div className="max-h-96 overflow-y-auto">
+        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+          My templates
+        </p>
+        {userTemplates.length === 0 ? (
+          <p className="px-2 pb-2 text-xs text-muted-foreground">
+            Save the current diagram to reuse it in any project.
+          </p>
+        ) : (
+          userTemplates.map((template) => (
+            <div key={template.id} className="group flex items-center gap-1">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => handleInsertOwn(template.id)}
+                className={`${rowClass} min-w-0 flex-1`}>
+                <span className="w-full truncate text-sm font-medium text-foreground">
+                  {template.name}
+                </span>
+                {template.description && (
+                  <span className="w-full truncate text-xs text-muted-foreground">
+                    {template.description}
+                  </span>
+                )}
+              </button>
+              {confirmingId === template.id ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => handleDelete(template.id)}
+                  className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10">
+                  Delete?
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`Delete ${template.name}`}
+                  onClick={() => setConfirmingId(template.id)}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:text-destructive focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          ))
+        )}
+        <button
+          type="button"
+          disabled={!hasNodes}
+          onClick={() => openPanel("save-template")}
+          className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent disabled:opacity-40">
+          <Plus size={14} className="text-muted-foreground" />
+          Save current diagram...
+        </button>
+
+        <div className="my-1 h-px bg-border" />
+
+        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+          Scenario templates
+        </p>
+        {builtInTemplates.map((template) => (
+          <button
+            key={template.id}
+            type="button"
+            onClick={() => handleInsertBuiltIn(template)}
+            className={rowClass}>
+            <span className="text-sm font-medium text-foreground">
+              {template.name}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {template.description}
+            </span>
+          </button>
+        ))}
+      </div>
+      {error && (
+        <p role="alert" className="px-2 py-1.5 text-xs text-destructive">
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
+
+export function TemplatesMenu({
+  userTemplates,
+}: {
+  userTemplates: TemplateSummary[];
+}) {
+  const activePanel = useTopologyStore((s) => s.activePanel);
+  const openPanel = useTopologyStore((s) => s.openPanel);
+  const closePanel = useTopologyStore((s) => s.closePanel);
+
+  return (
+    <>
+      <Popover
+        open={activePanel === "templates"}
+        onOpenChange={(next) => {
+          if (next) openPanel("templates");
+          else if (activePanel === "templates") closePanel();
+        }}>
         <Tooltip>
           <TooltipTrigger
             render={
@@ -103,94 +194,13 @@ export function TemplatesMenu({
           <TooltipContent side="right">Templates</TooltipContent>
         </Tooltip>
         <PopoverContent side="right" align="start" className="w-72 p-1">
-          <div className="max-h-96 overflow-y-auto">
-            <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-              My templates
-            </p>
-            {userTemplates.length === 0 ? (
-              <p className="px-2 pb-2 text-xs text-muted-foreground">
-                Save the current diagram to reuse it in any project.
-              </p>
-            ) : (
-              userTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className="group flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => handleInsertOwn(template.id)}
-                    className={`${rowClass} min-w-0 flex-1`}>
-                    <span className="w-full truncate text-sm font-medium text-foreground">
-                      {template.name}
-                    </span>
-                    {template.description && (
-                      <span className="w-full truncate text-xs text-muted-foreground">
-                        {template.description}
-                      </span>
-                    )}
-                  </button>
-                  {confirmingId === template.id ? (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => handleDelete(template.id)}
-                      className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10">
-                      Delete?
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      aria-label={`Delete ${template.name}`}
-                      onClick={() => setConfirmingId(template.id)}
-                      className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:text-destructive focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              ))
-            )}
-            <button
-              type="button"
-              disabled={!hasNodes}
-              onClick={() => {
-                setOpen(false);
-                setSaveOpen(true);
-              }}
-              className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent disabled:opacity-40">
-              <Plus size={14} className="text-muted-foreground" />
-              Save current diagram...
-            </button>
-
-            <div className="my-1 h-px bg-border" />
-
-            <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-              Scenario templates
-            </p>
-            {builtInTemplates.map((template) => (
-              <button
-                key={template.id}
-                type="button"
-                onClick={() => handleInsertBuiltIn(template)}
-                className={rowClass}>
-                <span className="text-sm font-medium text-foreground">
-                  {template.name}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {template.description}
-                </span>
-              </button>
-            ))}
-          </div>
-          {error && (
-            <p role="alert" className="px-2 py-1.5 text-xs text-destructive">
-              {error}
-            </p>
-          )}
+          <TemplatesPanel userTemplates={userTemplates} />
         </PopoverContent>
       </Popover>
 
-      {saveOpen && <SaveTemplateDialog onClose={() => setSaveOpen(false)} />}
+      {activePanel === "save-template" && (
+        <SaveTemplateDialog onClose={closePanel} />
+      )}
     </>
   );
 }
