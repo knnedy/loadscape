@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   BoxSelect,
@@ -27,13 +27,9 @@ import {
 } from "@/components/ui/tooltip";
 import {
   useTopologyStore,
-  useTopologyStoreApi,
   useTopologyTemporalStore,
 } from "../../_store/topology-provider";
-import { useReactFlow } from "@xyflow/react";
-import { renderCanvasToPng } from "@/lib/export-image";
-import { downloadText, downloadUrl } from "@/lib/download";
-import { parseTopology, serializeTopology } from "../../_lib/topology-io";
+import { useDiagramFiles } from "../../_hooks/use-diagram-files";
 import type { TemplateSummary } from "../../_actions/template-actions";
 import { ComponentPalette } from "./component-palette";
 import { TemplatesMenu } from "./templates-menu";
@@ -58,15 +54,12 @@ export function CanvasToolbar({
     (s) => s,
   );
   const hasNodes = useTopologyStore((s) => s.nodes.length > 0);
-  const replaceTopology = useTopologyStore((s) => s.replaceTopology);
   const snapToGrid = useTopologyStore((s) => s.snapToGrid);
   const toggleSnapToGrid = useTopologyStore((s) => s.toggleSnapToGrid);
 
   const [open, setOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const { getNodes, getNodesBounds, fitView } = useReactFlow();
-  const storeApi = useTopologyStoreApi();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { exportPng, exportJson, openImportPicker } = useDiagramFiles();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -84,44 +77,6 @@ export function CanvasToolbar({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
-  async function handleExportPng() {
-    const nodes = getNodes();
-    if (nodes.length === 0) return;
-    try {
-      const dataUrl = await renderCanvasToPng(getNodesBounds(nodes));
-      downloadUrl(dataUrl, "loadscape-diagram.png");
-    } catch (error) {
-      console.error("PNG export failed", error);
-    }
-  }
-
-  function handleExportJson() {
-    const { nodes, edges } = storeApi.getState();
-    if (nodes.length === 0) return;
-    downloadText(
-      serializeTopology(nodes, edges),
-      "loadscape-diagram.json",
-      "application/json",
-    );
-  }
-
-  async function handleImportJson(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    try {
-      const { nodes, edges } = parseTopology(await file.text());
-      replaceTopology(nodes, edges);
-      requestAnimationFrame(() =>
-        fitView({ maxZoom: 1, padding: 0.4, duration: 300 }),
-      );
-    } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : "Couldn't import that file.",
-      );
-    }
-  }
 
   return (
     <aside className="absolute top-1/2 left-4 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
@@ -249,7 +204,7 @@ export function CanvasToolbar({
           <button
             onClick={() => {
               setExportOpen(false);
-              handleExportPng();
+              exportPng();
             }}
             className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
             <ImageDown size={15} className="text-muted-foreground" />
@@ -258,7 +213,7 @@ export function CanvasToolbar({
           <button
             onClick={() => {
               setExportOpen(false);
-              handleExportJson();
+              exportJson();
             }}
             className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
             <FileDown size={15} className="text-muted-foreground" />
@@ -268,21 +223,11 @@ export function CanvasToolbar({
       </Popover>
 
       <Tooltip>
-        <TooltipTrigger
-          onClick={() => fileInputRef.current?.click()}
-          className={iconButtonClass}>
+        <TooltipTrigger onClick={openImportPicker} className={iconButtonClass}>
           <FileUp size={17} />
         </TooltipTrigger>
         <TooltipContent side="right">Import JSON</TooltipContent>
       </Tooltip>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/json,.json"
-        onChange={handleImportJson}
-        className="hidden"
-      />
 
       <div className="my-1 h-px w-6 bg-border" />
 
