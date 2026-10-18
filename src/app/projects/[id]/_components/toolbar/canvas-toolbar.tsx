@@ -29,12 +29,12 @@ import {
   useTopologyStore,
   useTopologyStoreApi,
   useTopologyTemporalStore,
-} from "../_store/topology-provider";
+} from "../../_store/topology-provider";
 import { useReactFlow } from "@xyflow/react";
 import { renderCanvasToPng } from "@/lib/export-image";
 import { downloadText, downloadUrl } from "@/lib/download";
-import { parseTopology, serializeTopology } from "../_lib/topology-io";
-import type { TemplateSummary } from "../_actions/template-actions";
+import { parseTopology, serializeTopology } from "../../_lib/topology-io";
+import type { TemplateSummary } from "../../_actions/template-actions";
 import { ComponentPalette } from "./component-palette";
 import { TemplatesMenu } from "./templates-menu";
 import { ShortcutsButton } from "./shortcuts-dialog";

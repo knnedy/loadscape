@@ -14,12 +14,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { templates as builtInTemplates } from "@/lib/catalog/templates";
-import { useTopologyStore } from "../_store/topology-provider";
+import { useTopologyStore } from "../../_store/topology-provider";
 import {
   deleteTemplate,
   getTemplate,
   type TemplateSummary,
-} from "../_actions/template-actions";
+} from "../../_actions/template-actions";
 import {
   SaveTemplateDialog,
   describeTemplateError,

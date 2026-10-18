@@ -22,9 +22,9 @@ import {
 } from "@/components/ui/tooltip";
 import { getCategoryDef } from "@/lib/catalog/components";
 import type { TopologyNodeData } from "@/lib/types/topology";
-import { useFocusNode } from "../_hooks/use-focus-node";
-import { useTopologyStore } from "../_store/topology-provider";
-import type { AppNode } from "../_store/topology-store";
+import { useFocusNode } from "../../_hooks/use-focus-node";
+import { useTopologyStore } from "../../_store/topology-provider";
+import type { AppNode } from "../../_store/topology-store";
 
 const triggerClass =
   "flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground";

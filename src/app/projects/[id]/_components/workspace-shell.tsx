@@ -1,7 +1,7 @@
 "use client";
 
 import { TopBar } from "./top-bar";
-import { CanvasToolbar } from "./canvas-toolbar";
+import { CanvasToolbar } from "./toolbar/canvas-toolbar";
 import { Canvas } from "./canvas/canvas";
 import { ConfigPanel } from "./inspector/config-panel";
 import { EmptyState } from "./canvas/empty-state";

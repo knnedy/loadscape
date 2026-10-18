@@ -16,8 +16,8 @@ import {
   MAX_TEMPLATE_DESCRIPTION_LENGTH,
   MAX_TEMPLATE_NAME_LENGTH,
 } from "@/lib/utils";
-import { useTopologyStoreApi } from "../_store/topology-provider";
-import { saveAsTemplate, type TemplateActionError } from "../_actions/template-actions";
+import { useTopologyStoreApi } from "../../_store/topology-provider";
+import { saveAsTemplate, type TemplateActionError } from "../../_actions/template-actions";
 
 export function describeTemplateError(error: TemplateActionError) {
   switch (error) {

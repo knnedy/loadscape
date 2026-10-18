@@ -16,7 +16,7 @@ import {
   componentCatalog,
   type ComponentDef,
 } from "@/lib/catalog/components";
-import { useRecentComponentIds } from "../_hooks/use-recent-components";
+import { useRecentComponentIds } from "../../_hooks/use-recent-components";
 
 function ComponentRow({ component }: { component: ComponentDef }) {
   return (

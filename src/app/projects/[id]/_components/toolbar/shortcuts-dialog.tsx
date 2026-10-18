@@ -14,7 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatKey, shortcutGroups } from "../_lib/shortcuts";
+import { formatKey, shortcutGroups } from "../../_lib/shortcuts";
 
 function Keys({ keys, isMac }: { keys: string[]; isMac: boolean }) {
   return (
