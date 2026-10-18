@@ -46,6 +46,8 @@ export type AppNode = Node<
 >;
 export type AppEdge = Edge<TopologyEdgeData>;
 
+export type InspectedTarget = { kind: "node" | "edge"; id: string };
+
 export interface InitialTopology {
   nodes: AppNode[];
   edges: AppEdge[];
@@ -56,6 +58,7 @@ export interface TopologyState {
   edges: AppEdge[];
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
+  inspected: InspectedTarget | null;
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<AppEdge>[]) => void;
   onConnect: (connection: Connection) => void;
@@ -135,6 +138,7 @@ export function createTopologyStore(
         edges: initial.edges,
         selectedNodeId: null,
         selectedEdgeId: null,
+        inspected: null,
         onNodesChange: (changes) => {
           // Pure selection or React-Flow-internal dimension reports carry
           // no meaningful diagram change — don't let them eat an undo step.
@@ -187,8 +191,18 @@ export function createTopologyStore(
           };
           set({ nodes: [...get().nodes, newNode] });
         },
-        selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null }),
-        selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null }),
+        selectNode: (id) =>
+          set({
+            selectedNodeId: id,
+            selectedEdgeId: null,
+            inspected: id ? { kind: "node", id } : null,
+          }),
+        selectEdge: (id) =>
+          set({
+            selectedEdgeId: id,
+            selectedNodeId: null,
+            inspected: id ? { kind: "edge", id } : null,
+          }),
         // Selects one node the way a canvas click would: React Flow's own
         // `selected` flags (for the node's halo) plus the store id (for the
         // config panel). Selection-only changes stay out of the undo history.
@@ -211,7 +225,11 @@ export function createTopologyStore(
               })),
             );
           }
-          set({ selectedNodeId: id, selectedEdgeId: null });
+          set({
+            selectedNodeId: id,
+            selectedEdgeId: null,
+            inspected: { kind: "node", id },
+          });
         },
         updateNodeCapacity: (id, capacity) =>
           set({
@@ -275,7 +293,11 @@ export function createTopologyStore(
             },
             selected: false,
           } as AppNode;
-          set({ nodes: [...get().nodes, newNode], selectedNodeId: newId });
+          set({
+            nodes: [...get().nodes, newNode],
+            selectedNodeId: newId,
+            inspected: { kind: "node", id: newId },
+          });
         },
         deleteNode: (id) => {
           const node = get().nodes.find((n) => n.id === id);
@@ -304,6 +326,7 @@ export function createTopologyStore(
               nodes,
               selectedNodeId:
                 get().selectedNodeId === id ? null : get().selectedNodeId,
+              inspected: get().inspected?.id === id ? null : get().inspected,
             });
             return;
           }
@@ -314,6 +337,7 @@ export function createTopologyStore(
             ),
             selectedNodeId:
               get().selectedNodeId === id ? null : get().selectedNodeId,
+            inspected: get().inspected?.id === id ? null : get().inspected,
           });
         },
         deleteEdge: (id) =>
@@ -321,6 +345,7 @@ export function createTopologyStore(
             edges: get().edges.filter((e) => e.id !== id),
             selectedEdgeId:
               get().selectedEdgeId === id ? null : get().selectedEdgeId,
+            inspected: get().inspected?.id === id ? null : get().inspected,
           }),
         updateEdgeLabel: (id, label) =>
           set({
@@ -610,24 +635,47 @@ export function createTopologyStore(
             edges: nextEdges,
             selectedNodeId: null,
             selectedEdgeId: null,
+            inspected: null,
           });
         },
+        // React Flow reports selection changes for drags as well as clicks,
+        // so this may close the inspector but never opens it.
         syncSelection: (nodeIds, edgeIds) => {
           const nextNodeId =
             nodeIds.length === 1 && edgeIds.length === 0 ? nodeIds[0] : null;
           const nextEdgeId =
             edgeIds.length === 1 && nodeIds.length === 0 ? edgeIds[0] : null;
-          const { selectedNodeId, selectedEdgeId } = get();
-          if (nextNodeId === selectedNodeId && nextEdgeId === selectedEdgeId)
+          const { selectedNodeId, selectedEdgeId, inspected } = get();
+          const inspectedStillSelected =
+            inspected !== null &&
+            (inspected.kind === "node" ? nodeIds : edgeIds).includes(
+              inspected.id,
+            );
+          const nextInspected = inspectedStillSelected ? inspected : null;
+          if (
+            nextNodeId === selectedNodeId &&
+            nextEdgeId === selectedEdgeId &&
+            nextInspected === inspected
+          )
             return;
-          set({ selectedNodeId: nextNodeId, selectedEdgeId: nextEdgeId });
+          set({
+            selectedNodeId: nextNodeId,
+            selectedEdgeId: nextEdgeId,
+            inspected: nextInspected,
+          });
         },
         replaceTopology: (nodes, edges) => {
           const floor = highestIdSuffix(nodes);
           nodeIdCounter = Math.max(nodeIdCounter, floor);
           groupIdCounter = Math.max(groupIdCounter, floor);
           noteIdCounter = Math.max(noteIdCounter, floor);
-          set({ nodes, edges, selectedNodeId: null, selectedEdgeId: null });
+          set({
+            nodes,
+            edges,
+            selectedNodeId: null,
+            selectedEdgeId: null,
+            inspected: null,
+          });
         },
       }),
       {
