@@ -26,7 +26,7 @@ import {
 } from "./save-template-dialog";
 
 const triggerClass =
-  "flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground";
+  "flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground";
 const rowClass =
   "flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-accent disabled:opacity-60";
 
@@ -186,14 +186,18 @@ export function TemplatesMenu({
         <Tooltip>
           <TooltipTrigger
             render={
-              <PopoverTrigger className={triggerClass}>
+              <PopoverTrigger aria-label="Templates" className={triggerClass}>
                 <LayoutTemplate size={17} />
               </PopoverTrigger>
             }
           />
-          <TooltipContent side="right">Templates</TooltipContent>
+          <TooltipContent side="top">Templates</TooltipContent>
         </Tooltip>
-        <PopoverContent side="right" align="start" className="w-72 p-1">
+        <PopoverContent
+          side="top"
+          align="center"
+          sideOffset={12}
+          className="w-72 p-1">
           <TemplatesPanel userTemplates={userTemplates} />
         </PopoverContent>
       </Popover>
