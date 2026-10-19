@@ -25,7 +25,7 @@ export function StatsPanel() {
   const totalEdges = stats.syncEdges + stats.asyncEdges;
 
   return (
-    <aside className="pointer-events-none absolute top-4 right-4 z-10 w-48 rounded-2xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm select-none">
+    <aside className="pointer-events-none absolute top-16 right-4 z-10 w-48 rounded-2xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm select-none">
       <p className="text-sm font-semibold text-foreground">
         {stats.componentCount}{" "}
         {stats.componentCount === 1 ? "component" : "components"}
