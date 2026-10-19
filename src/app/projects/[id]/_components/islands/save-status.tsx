@@ -4,21 +4,18 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutosave } from "../../_hooks/use-autosave";
 
-const pill =
-  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors";
+const base = "flex items-center gap-1.5 text-[11px] font-medium";
+const problem = cn(
+  base,
+  "rounded-md px-1.5 py-1 text-destructive transition-colors hover:bg-destructive/10",
+);
 
 export function SaveStatus({ projectId }: { projectId: string }) {
   const { status, retry } = useAutosave(projectId);
 
   if (status === "error") {
     return (
-      <button
-        type="button"
-        onClick={retry}
-        className={cn(
-          pill,
-          "bg-destructive/10 text-destructive hover:bg-destructive/15",
-        )}>
+      <button type="button" onClick={retry} className={problem}>
         <AlertCircle size={12} />
         Not saved
         <span className="underline underline-offset-2">Retry</span>
@@ -34,10 +31,7 @@ export function SaveStatus({ projectId }: { projectId: string }) {
         href="/sign-in?redirect=%2Fprojects"
         target="_blank"
         rel="noreferrer"
-        className={cn(
-          pill,
-          "bg-destructive/10 text-destructive hover:bg-destructive/15",
-        )}>
+        className={problem}>
         <AlertCircle size={12} />
         Signed out
         <span className="underline underline-offset-2">Sign in</span>
@@ -47,18 +41,15 @@ export function SaveStatus({ projectId }: { projectId: string }) {
 
   if (status === "saved") {
     return (
-      <span role="status" className={cn(pill, "bg-ok/10 text-ok")}>
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ok opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-ok" />
-        </span>
+      <span role="status" className={cn(base, "text-ok")}>
+        <span className="h-1.5 w-1.5 rounded-full bg-ok" />
         Saved
       </span>
     );
   }
 
   return (
-    <span role="status" className={cn(pill, "bg-muted text-muted-foreground")}>
+    <span role="status" className={cn(base, "text-muted-foreground")}>
       {status === "saving" ? (
         <Loader2 size={12} className="animate-spin" />
       ) : (
