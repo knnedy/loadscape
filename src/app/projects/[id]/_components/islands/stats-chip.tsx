@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { computeTopologyStats } from "../../_lib/topology-stats";
 import { useTopologyStore } from "../../_store/topology-provider";
 
-export function StatsPanel() {
+export function StatsChip() {
   const nodes = useTopologyStore((s) => s.nodes);
   const edges = useTopologyStore((s) => s.edges);
   const stats = useMemo(

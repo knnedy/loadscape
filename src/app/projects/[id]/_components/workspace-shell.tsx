@@ -10,7 +10,7 @@ import { ShortcutsDialog } from "./panels/shortcuts-dialog";
 import { Canvas } from "./canvas/canvas";
 import { ConfigPanel } from "./inspector/config-panel";
 import { EmptyState } from "./canvas/empty-state";
-import { StatsPanel } from "./inspector/stats-panel";
+import { StatsChip } from "./islands/stats-chip";
 import { TopologyProvider } from "../_store/topology-provider";
 import { useGlobalShortcuts } from "../_hooks/use-global-shortcuts";
 import { ReactFlowProvider } from "@xyflow/react";
@@ -45,7 +45,7 @@ function WorkspaceLayout({
         <EmptyState />
         <ProjectIsland projectId={projectId} projectName={projectName} />
         <ActionsIsland user={user} />
-        <StatsPanel />
+        <StatsChip />
         <CanvasDock userTemplates={userTemplates} />
         <ZoomControls />
       </div>
