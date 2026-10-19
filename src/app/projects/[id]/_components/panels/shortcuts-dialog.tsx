@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { Keyboard } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useTopologyStore } from "../../_store/topology-provider";
 import { formatKey, shortcutGroups } from "../../_lib/shortcuts";
 
@@ -31,7 +25,7 @@ function Keys({ keys, isMac }: { keys: string[]; isMac: boolean }) {
   );
 }
 
-export function ShortcutsButton() {
+export function ShortcutsDialog() {
   const open = useTopologyStore((s) => s.activePanel === "shortcuts");
   const openPanel = useTopologyStore((s) => s.openPanel);
   const closePanel = useTopologyStore((s) => s.closePanel);
@@ -59,63 +53,50 @@ export function ShortcutsButton() {
   const isMac = open && /Mac|iPhone|iPad/.test(navigator.userAgent);
 
   return (
-    <>
-      <Tooltip>
-        <TooltipTrigger
-          onClick={() => openPanel("shortcuts")}
-          className="flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
-          <Keyboard size={17} />
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          Keyboard shortcuts <kbd className="ml-1 opacity-70">?</kbd>
-        </TooltipContent>
-      </Tooltip>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) openPanel("shortcuts");
+        else closePanel();
+      }}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Keyboard shortcuts</DialogTitle>
+          <DialogDescription>
+            Press ? any time to open this list.
+          </DialogDescription>
+        </DialogHeader>
 
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          if (next) openPanel("shortcuts");
-          else closePanel();
-        }}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Keyboard shortcuts</DialogTitle>
-            <DialogDescription>
-              Press ? any time to open this list.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-x-10 gap-y-6 sm:grid-cols-2">
-            {shortcutGroups.map((group) => (
-              <section key={group.title}>
-                <h3 className="mb-2 text-xs font-medium text-muted-foreground">
-                  {group.title}
-                </h3>
-                <ul className="flex flex-col gap-2">
-                  {group.shortcuts.map((shortcut) => (
-                    <li
-                      key={shortcut.label}
-                      className="flex items-center justify-between gap-3 text-sm">
-                      <span className="text-foreground">{shortcut.label}</span>
-                      <span className="flex shrink-0 items-center gap-1.5">
-                        <Keys keys={shortcut.keys} isMac={isMac} />
-                        {shortcut.alternate && (
-                          <>
-                            <span className="text-xs text-muted-foreground">
-                              or
-                            </span>
-                            <Keys keys={shortcut.alternate} isMac={isMac} />
-                          </>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        <div className="grid gap-x-10 gap-y-6 sm:grid-cols-2">
+          {shortcutGroups.map((group) => (
+            <section key={group.title}>
+              <h3 className="mb-2 text-xs font-medium text-muted-foreground">
+                {group.title}
+              </h3>
+              <ul className="flex flex-col gap-2">
+                {group.shortcuts.map((shortcut) => (
+                  <li
+                    key={shortcut.label}
+                    className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-foreground">{shortcut.label}</span>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <Keys keys={shortcut.keys} isMac={isMac} />
+                      {shortcut.alternate && (
+                        <>
+                          <span className="text-xs text-muted-foreground">
+                            or
+                          </span>
+                          <Keys keys={shortcut.alternate} isMac={isMac} />
+                        </>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
