@@ -1,33 +1,20 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Search } from "lucide-react";
 import {
   Command,
+  CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { getCategoryDef } from "@/lib/catalog/components";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import { useFocusNode } from "../../_hooks/use-focus-node";
 import { useTopologyStore } from "../../_store/topology-provider";
 import type { AppNode } from "../../_store/topology-store";
-
-const triggerClass =
-  "flex h-9.5 w-9.5 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground";
 
 const MAX_NOTE_LABEL = 48;
 
@@ -114,7 +101,7 @@ function ResultGroup({
   );
 }
 
-// Rendered only while the popover is open, so the list isn't rebuilt on
+// Rendered only while the dialog is open, so the list isn't rebuilt on
 // every drag frame.
 function NodeResults({ onPick }: { onPick: (id: string) => void }) {
   const nodes = useTopologyStore((s) => s.nodes);
@@ -138,7 +125,7 @@ function NodeResults({ onPick }: { onPick: (id: string) => void }) {
 }
 
 export function NodeSearch() {
-  const activePanel = useTopologyStore((s) => s.activePanel);
+  const open = useTopologyStore((s) => s.activePanel === "search");
   const openPanel = useTopologyStore((s) => s.openPanel);
   const closePanel = useTopologyStore((s) => s.closePanel);
   const focusNode = useFocusNode();
@@ -166,32 +153,20 @@ export function NodeSearch() {
   }
 
   return (
-    <Popover
-      open={activePanel === "search"}
+    <CommandDialog
+      open={open}
       onOpenChange={(next) => {
         if (next) openPanel("search");
-        else if (activePanel === "search") closePanel();
-      }}>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <PopoverTrigger className={triggerClass}>
-              <Search size={17} />
-            </PopoverTrigger>
-          }
-        />
-        <TooltipContent side="right">
-          Find a node <kbd className="ml-1 opacity-70">/</kbd>
-        </TooltipContent>
-      </Tooltip>
-      <PopoverContent side="right" align="start" className="w-72 p-0">
-        <Command>
-          <CommandInput placeholder="Find a node..." />
-          <CommandList className="max-h-80">
-            <NodeResults onPick={handlePick} />
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+        else closePanel();
+      }}
+      title="Find a node"
+      description="Search the canvas and jump to a node.">
+      <Command>
+        <CommandInput placeholder="Find a node..." />
+        <CommandList className="max-h-80">
+          <NodeResults onPick={handlePick} />
+        </CommandList>
+      </Command>
+    </CommandDialog>
   );
 }
