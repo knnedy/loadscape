@@ -12,8 +12,8 @@ import { analyzeReadiness } from "../../_lib/topology-readiness";
 import { useFocusNode } from "../../_hooks/use-focus-node";
 import { useTopologyStore } from "../../_store/topology-provider";
 
-const pill =
-  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors";
+const base =
+  "flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium transition-colors";
 
 export function ReadinessIndicator() {
   const nodes = useTopologyStore((s) => s.nodes);
@@ -31,7 +31,7 @@ export function ReadinessIndicator() {
 
   if (total === 0) {
     return (
-      <span role="status" className={cn(pill, "bg-ok/10 text-ok")}>
+      <span role="status" className={cn(base, "text-ok")}>
         <CheckCircle2 size={13} />
         Ready
       </span>
@@ -45,15 +45,15 @@ export function ReadinessIndicator() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         className={cn(
-          pill,
+          base,
           hasErrors
-            ? "bg-destructive/10 text-destructive hover:bg-destructive/15"
-            : "bg-amber-500/10 text-amber-600 hover:bg-amber-500/15 dark:text-amber-400",
+            ? "text-destructive hover:bg-destructive/10"
+            : "text-amber-600 hover:bg-amber-500/10 dark:text-amber-400",
         )}>
         <Icon size={13} />
         {total} {total === 1 ? "issue" : "issues"}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-1">
+      <PopoverContent align="end" sideOffset={12} className="w-80 p-1">
         <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
           Before you run
         </p>
