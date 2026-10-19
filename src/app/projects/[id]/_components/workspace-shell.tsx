@@ -3,7 +3,7 @@
 import { ActionsIsland } from "./islands/actions-island";
 import { HistoryDialog } from "./islands/history-menu";
 import { ProjectIsland } from "./islands/project-island";
-import { CanvasToolbar } from "./toolbar/canvas-toolbar";
+import { CanvasToolbar } from "./panels/canvas-toolbar";
 import { Canvas } from "./canvas/canvas";
 import { ConfigPanel } from "./inspector/config-panel";
 import { EmptyState } from "./canvas/empty-state";
