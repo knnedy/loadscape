@@ -4,14 +4,6 @@ import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { MAX_PROJECT_NAME_LENGTH, normalizeProjectName } from "@/lib/utils";
 import { renameProject } from "../../../actions";
 
-function Initial({ name }: { name: string }) {
-  return (
-    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-[11px] font-bold text-primary-foreground">
-      {name.charAt(0).toUpperCase()}
-    </span>
-  );
-}
-
 export function ProjectName({
   projectId,
   initialName,
@@ -66,10 +58,7 @@ export function ProjectName({
 
   if (editing) {
     return (
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-center gap-2 py-1.5 pr-2 pl-1.5">
-        <Initial name={draft || name} />
+      <form onSubmit={handleSubmit} className="flex items-center">
         <input
           autoFocus
           value={draft}
@@ -79,7 +68,7 @@ export function ProjectName({
           onKeyDown={handleKeyDown}
           maxLength={MAX_PROJECT_NAME_LENGTH}
           aria-label="Project name"
-          className="h-8 w-56 rounded-md border border-primary bg-background px-2 text-[15px] font-semibold text-foreground ring-4 ring-primary/15 outline-none"
+          className="h-7 w-52 rounded-md border border-primary bg-background px-2 text-[13px] font-medium text-foreground ring-4 ring-primary/15 outline-none"
         />
       </form>
     );
@@ -91,9 +80,8 @@ export function ProjectName({
         type="button"
         onClick={startEditing}
         title="Rename project"
-        className="flex items-center gap-2 rounded-lg py-1.5 pr-3 pl-1.5 transition-colors hover:bg-accent">
-        <Initial name={name} />
-        <span className="max-w-64 truncate text-[15px] font-semibold text-foreground">
+        className="rounded-md px-1.5 py-1 transition-colors hover:bg-accent">
+        <span className="block max-w-56 truncate text-[13px] font-medium text-foreground">
           {name}
         </span>
       </button>
