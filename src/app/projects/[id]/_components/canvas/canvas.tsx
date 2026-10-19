@@ -12,7 +12,6 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
   ConnectionMode,
   useReactFlow,
@@ -266,10 +265,6 @@ export function Canvas() {
           gap={24}
           size={1.5}
           color="var(--canvas-dot)"
-        />
-        <Controls
-          position="bottom-right"
-          className="border border-border bg-card [&_button]:border-border [&_button]:bg-card [&_button]:text-foreground [&_button:hover]:bg-accent [&_svg]:fill-current"
         />
         {showMiniMap && (
           <MiniMap
