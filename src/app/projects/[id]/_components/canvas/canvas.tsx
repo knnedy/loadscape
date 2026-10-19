@@ -40,6 +40,7 @@ import {
   CanvasContextMenu,
   type ContextMenuTarget,
 } from "./canvas-context-menu";
+import { SelectionToolbar } from "./selection-toolbar";
 
 // Matches the 24px dots drawn by the canvas background.
 const SNAP_GRID: [number, number] = [24, 24];
@@ -289,6 +290,7 @@ export function Canvas() {
           />
         )}
         <AlignmentGuides guides={guides} />
+        <SelectionToolbar />
       </ReactFlow>
       <CanvasContextMenu target={contextMenu} onClose={closeContextMenu} />
     </div>
