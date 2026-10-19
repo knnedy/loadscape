@@ -1,9 +1,9 @@
 "use client";
 
 import { ActionsIsland } from "./islands/actions-island";
+import { CanvasDock } from "./islands/canvas-dock";
 import { ProjectIsland } from "./islands/project-island";
 import { HistoryDialog } from "./panels/history-dialog";
-import { CanvasToolbar } from "./panels/canvas-toolbar";
 import { Canvas } from "./canvas/canvas";
 import { ConfigPanel } from "./inspector/config-panel";
 import { EmptyState } from "./canvas/empty-state";
@@ -43,7 +43,7 @@ function WorkspaceLayout({
         <ProjectIsland projectId={projectId} projectName={projectName} />
         <ActionsIsland user={user} />
         <StatsPanel />
-        <CanvasToolbar userTemplates={userTemplates} />
+        <CanvasDock userTemplates={userTemplates} />
       </div>
       <ConfigPanel />
       <HistoryDialog projectId={projectId} snapshots={snapshots} />
