@@ -3,6 +3,7 @@
 import { ActionsIsland } from "./islands/actions-island";
 import { CanvasDock } from "./islands/canvas-dock";
 import { ProjectIsland } from "./islands/project-island";
+import { ZoomControls } from "./islands/zoom-controls";
 import { HistoryDialog } from "./panels/history-dialog";
 import { NodeSearch } from "./panels/node-search";
 import { ShortcutsDialog } from "./panels/shortcuts-dialog";
@@ -46,6 +47,7 @@ function WorkspaceLayout({
         <ActionsIsland user={user} />
         <StatsPanel />
         <CanvasDock userTemplates={userTemplates} />
+        <ZoomControls />
       </div>
       <ConfigPanel />
       <HistoryDialog projectId={projectId} snapshots={snapshots} />
