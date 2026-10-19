@@ -4,6 +4,8 @@ import { ActionsIsland } from "./islands/actions-island";
 import { CanvasDock } from "./islands/canvas-dock";
 import { ProjectIsland } from "./islands/project-island";
 import { HistoryDialog } from "./panels/history-dialog";
+import { NodeSearch } from "./panels/node-search";
+import { ShortcutsDialog } from "./panels/shortcuts-dialog";
 import { Canvas } from "./canvas/canvas";
 import { ConfigPanel } from "./inspector/config-panel";
 import { EmptyState } from "./canvas/empty-state";
@@ -47,6 +49,8 @@ function WorkspaceLayout({
       </div>
       <ConfigPanel />
       <HistoryDialog projectId={projectId} snapshots={snapshots} />
+      <NodeSearch />
+      <ShortcutsDialog />
     </div>
   );
 }
