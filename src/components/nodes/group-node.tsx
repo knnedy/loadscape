@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { NodeResizer, type Node, type NodeProps } from "@xyflow/react";
-import { X, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -17,15 +17,28 @@ type GroupNodeType = Node<TopologyGroupData, "group-container">;
 export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
   const renameGroup = useTopologyStore((s) => s.renameGroup);
   const updateGroupColor = useTopologyStore((s) => s.updateGroupColor);
-  const deleteNode = useTopologyStore((s) => s.deleteNode);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
+  // Enter and blur can both fire; only the first one counts.
+  const settledRef = useRef(false);
+
+  function startEditing() {
+    settledRef.current = false;
+    setDraft(data.label);
+    setEditing(true);
+  }
+
+  function cancel() {
+    settledRef.current = true;
+    setEditing(false);
+  }
 
   function commit() {
+    if (settledRef.current) return;
+    settledRef.current = true;
     const trimmed = draft.trim();
-    if (trimmed) renameGroup(id, trimmed);
-    else setDraft(data.label);
+    if (trimmed && trimmed !== data.label) renameGroup(id, trimmed);
     setEditing(false);
   }
 
@@ -48,6 +61,7 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
       <div className="nodrag absolute -top-3 left-3 flex items-center gap-1.5">
         <Popover>
           <PopoverTrigger
+            aria-label="Group color"
             className="h-3.5 w-3.5 shrink-0 rounded-full ring-2 ring-card"
             style={{ backgroundColor: data.color }}
           />
@@ -55,9 +69,10 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
             side="bottom"
             align="start"
             className="flex w-auto gap-1.5 p-2">
-            {groupColorPalette.map((color) => (
+            {groupColorPalette.map((color, index) => (
               <button
                 key={color}
+                aria-label={`Color ${index + 1}`}
                 onClick={() => updateGroupColor(id, color)}
                 className="relative flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
                 style={{
@@ -79,35 +94,27 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onFocus={(e) => e.currentTarget.select()}
             onBlur={commit}
             onKeyDown={(e) => {
               if (e.key === "Enter") commit();
-              if (e.key === "Escape") {
-                setDraft(data.label);
-                setEditing(false);
-              }
+              if (e.key === "Escape") cancel();
             }}
+            aria-label="Group name"
             className="w-32 rounded border border-border bg-card px-1.5 py-0.5 text-xs text-foreground outline-none"
           />
         ) : (
           <span
-            onDoubleClick={() => setEditing(true)}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              startEditing();
+            }}
             className="rounded-md px-2 py-0.5 text-xs font-semibold text-white shadow-sm"
             style={{ backgroundColor: data.color }}>
             {data.label}
           </span>
         )}
       </div>
-      {selected && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            deleteNode(id);
-          }}
-          className="nodrag absolute -top-2 -right-2 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm hover:opacity-90">
-          <X size={12} />
-        </button>
-      )}
     </>
   );
 }
