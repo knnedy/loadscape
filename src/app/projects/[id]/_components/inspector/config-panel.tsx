@@ -48,6 +48,7 @@ function EndpointDot({ category }: { category?: NodeCategory }) {
 
 export function ConfigPanel() {
   const inspected = useTopologyStore((s) => s.inspected);
+  const detailsOpen = useTopologyStore((s) => s.detailsOpen);
   const selectionCount = useTopologyStore(
     (s) =>
       s.nodes.filter((n) => n.selected).length +
@@ -63,11 +64,11 @@ export function ConfigPanel() {
   if (selectionCount > 1) return <BulkEditPanel />;
 
   const node =
-    inspected?.kind === "node"
+    detailsOpen && inspected?.kind === "node"
       ? nodes.find((n) => n.id === inspected.id)
       : undefined;
   const edge =
-    inspected?.kind === "edge"
+    detailsOpen && inspected?.kind === "edge"
       ? edges.find((e) => e.id === inspected.id)
       : undefined;
 
