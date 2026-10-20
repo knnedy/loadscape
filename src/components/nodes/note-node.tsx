@@ -1,7 +1,8 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NodeResizer, type Node, type NodeProps } from "@xyflow/react";
-import { X, Check, StickyNote } from "lucide-react";
+import { Check, StickyNote } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -13,10 +14,32 @@ import type { TopologyNoteData } from "@/lib/types/topology";
 
 type NoteNodeType = Node<TopologyNoteData, "note">;
 
+// Typing is written to the store after a pause, so a burst of typing is one
+// undo step instead of one per keystroke.
+const COMMIT_DELAY_MS = 500;
+
 export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
   const updateNoteText = useTopologyStore((s) => s.updateNoteText);
   const updateNoteColor = useTopologyStore((s) => s.updateNoteColor);
-  const deleteNode = useTopologyStore((s) => s.deleteNode);
+
+  const [draft, setDraft] = useState<string | null>(null);
+  const draftRef = useRef<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flush = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    const pending = draftRef.current;
+    if (pending === null) return;
+    draftRef.current = null;
+    setDraft(null);
+    updateNoteText(id, pending);
+  }, [id, updateNoteText]);
+
+  // Leaving the canvas mid-sentence still saves what was typed.
+  useEffect(() => flush, [flush]);
 
   return (
     <>
@@ -33,7 +56,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
           borderColor: data.color,
           backgroundColor: `color-mix(in oklch, ${data.color} 12%, var(--card))`,
         }}>
-        <div className="mb-1 flex items-center justify-between">
+        <div className="mb-1 flex items-center">
           <div className="flex items-center gap-1.5">
             <StickyNote
               size={11}
@@ -42,6 +65,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
             />
             <Popover>
               <PopoverTrigger
+                aria-label="Note color"
                 className="nodrag h-3 w-3 shrink-0 rounded-full"
                 style={{ backgroundColor: data.color }}
               />
@@ -49,9 +73,10 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
                 side="top"
                 align="start"
                 className="flex w-auto gap-1.5 p-2">
-                {groupColorPalette.map((color) => (
+                {groupColorPalette.map((color, index) => (
                   <button
                     key={color}
+                    aria-label={`Color ${index + 1}`}
                     onClick={() => updateNoteColor(id, color)}
                     className="relative flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
                     style={{
@@ -69,22 +94,19 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
               </PopoverContent>
             </Popover>
           </div>
-          {selected && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteNode(id);
-              }}
-              className="nodrag flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:opacity-90">
-              <X size={10} />
-            </button>
-          )}
         </div>
         <textarea
-          value={data.text}
-          onChange={(e) => updateNoteText(id, e.target.value)}
+          value={draft ?? data.text}
+          onChange={(e) => {
+            draftRef.current = e.target.value;
+            setDraft(e.target.value);
+            if (timerRef.current) clearTimeout(timerRef.current);
+            timerRef.current = setTimeout(flush, COMMIT_DELAY_MS);
+          }}
+          onBlur={flush}
+          aria-label="Note text"
           placeholder="Write a note..."
-          className="nodrag flex-1 resize-none border-none bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
+          className="nodrag nowheel flex-1 resize-none border-none bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
         />
       </div>
     </>
