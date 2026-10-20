@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import {
@@ -30,11 +30,25 @@ export function ComponentNode({
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
+  // Enter and blur can both fire; only the first one counts.
+  const settledRef = useRef(false);
+
+  function startEditing() {
+    settledRef.current = false;
+    setDraft(data.label);
+    setEditing(true);
+  }
+
+  function cancel() {
+    settledRef.current = true;
+    setEditing(false);
+  }
 
   function commit() {
+    if (settledRef.current) return;
+    settledRef.current = true;
     const trimmed = draft.trim();
-    if (trimmed) renameNode(id, trimmed);
-    else setDraft(data.label);
+    if (trimmed && trimmed !== data.label) renameNode(id, trimmed);
     setEditing(false);
   }
 
@@ -74,22 +88,21 @@ export function ComponentNode({
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onFocus={(e) => e.currentTarget.select()}
             onBlur={commit}
             onKeyDown={(e) => {
               if (e.key === "Enter") commit();
-              if (e.key === "Escape") {
-                setDraft(data.label);
-                setEditing(false);
-              }
+              if (e.key === "Escape") cancel();
             }}
             onClick={(e) => e.stopPropagation()}
+            aria-label="Component name"
             className="nodrag w-24 rounded border border-border bg-background px-1 py-0.5 text-xs text-foreground outline-none"
           />
         ) : (
           <span
             onDoubleClick={(e) => {
               e.stopPropagation();
-              setEditing(true);
+              startEditing();
             }}
             className="truncate text-[13px] leading-tight font-medium text-foreground">
             {data.label}
