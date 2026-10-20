@@ -5,9 +5,11 @@ export interface SelectionSlice {
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   inspected: InspectedTarget | null;
+  detailsOpen: boolean;
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
   selectOnly: (id: string) => void;
+  openDetails: () => void;
   syncSelection: (nodeIds: string[], edgeIds: string[]) => void;
   deleteSelection: () => void;
 }
@@ -21,17 +23,22 @@ export const createSelectionSlice: StateCreator<
   selectedNodeId: null,
   selectedEdgeId: null,
   inspected: null,
+  detailsOpen: false,
+  // Clicking a node never opens the details panel, but a panel that is
+  // already open follows the selection to the new node.
   selectNode: (id) =>
     set({
       selectedNodeId: id,
       selectedEdgeId: null,
       inspected: id ? { kind: "node", id } : null,
+      detailsOpen: id !== null && get().detailsOpen && get().inspected !== null,
     }),
   selectEdge: (id) =>
     set({
       selectedEdgeId: id,
       selectedNodeId: null,
       inspected: id ? { kind: "edge", id } : null,
+      detailsOpen: id !== null,
     }),
   // Selects one node the way a canvas click would: React Flow's own
   // `selected` flags (for the node's halo) plus the store id (for the
@@ -59,8 +66,10 @@ export const createSelectionSlice: StateCreator<
       selectedNodeId: id,
       selectedEdgeId: null,
       inspected: { kind: "node", id },
+      detailsOpen: get().detailsOpen && get().inspected !== null,
     });
   },
+  openDetails: () => set({ detailsOpen: get().inspected !== null }),
   // React Flow reports selection changes for drags as well as clicks,
   // so this may close the inspector but never opens it.
   syncSelection: (nodeIds, edgeIds) => {
@@ -83,6 +92,7 @@ export const createSelectionSlice: StateCreator<
       selectedNodeId: nextNodeId,
       selectedEdgeId: nextEdgeId,
       inspected: nextInspected,
+      detailsOpen: nextInspected !== null && get().detailsOpen,
     });
   },
   deleteSelection: () => {
@@ -135,6 +145,7 @@ export const createSelectionSlice: StateCreator<
       selectedNodeId: null,
       selectedEdgeId: null,
       inspected: null,
+      detailsOpen: false,
     });
   },
 });
