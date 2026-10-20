@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { X } from "lucide-react";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import {
   componentCatalog,
@@ -27,7 +26,6 @@ export function ComponentNode({
   const isCapsule = categoryDef.shape === "capsule";
   const catColor = `var(--cat-${data.category})`;
 
-  const deleteNode = useTopologyStore((s) => s.deleteNode);
   const renameNode = useTopologyStore((s) => s.renameNode);
 
   const [editing, setEditing] = useState(false);
@@ -63,17 +61,6 @@ export function ComponentNode({
         width: isCapsule ? undefined : 160,
         minWidth: isCapsule ? 110 : undefined,
       }}>
-      {selected && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            deleteNode(id);
-          }}
-          className="nodrag absolute -top-2 -right-2 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm hover:opacity-90">
-          <X size={12} />
-        </button>
-      )}
-
       <Handle type="target" position={Position.Left} style={handleStyle} />
 
       <div className={`flex items-center gap-2 ${isCapsule ? "" : "mb-0.5"}`}>
