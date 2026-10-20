@@ -1,7 +1,7 @@
 "use client";
 
 import { NodeToolbar, Position } from "@xyflow/react";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -21,9 +21,11 @@ function compact(value: number) {
 
 function ComponentToolbar({ id }: { id: string }) {
   const node = useTopologyStore((s) => s.nodes.find((n) => n.id === id));
+  const detailsOpen = useTopologyStore((s) => s.detailsOpen);
   const duplicateNode = useTopologyStore((s) => s.duplicateNode);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
   const updateNodeCapacity = useTopologyStore((s) => s.updateNodeCapacity);
+  const openDetails = useTopologyStore((s) => s.openDetails);
 
   if (!node || node.type !== "component") return null;
   const { capacity } = node.data as TopologyNodeData;
@@ -67,6 +69,20 @@ function ComponentToolbar({ id }: { id: string }) {
         ))}
 
         <div className="mx-1 h-4 w-px bg-border" />
+
+        <Tooltip>
+          <TooltipTrigger
+            onClick={openDetails}
+            aria-label="Details"
+            aria-pressed={detailsOpen}
+            className={cn(
+              buttonClass,
+              detailsOpen && "bg-accent text-accent-foreground",
+            )}>
+            <SlidersHorizontal size={14} />
+          </TooltipTrigger>
+          <TooltipContent side="top">Details</TooltipContent>
+        </Tooltip>
 
         <Tooltip>
           <TooltipTrigger
