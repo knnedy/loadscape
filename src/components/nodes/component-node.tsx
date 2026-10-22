@@ -27,6 +27,7 @@ export function ComponentNode({
   const catColor = `var(--cat-${data.category})`;
 
   const renameNode = useTopologyStore((s) => s.renameNode);
+  const readOnly = useTopologyStore((s) => s.readOnly);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
@@ -107,7 +108,7 @@ export function ComponentNode({
           <span
             onDoubleClick={(e) => {
               e.stopPropagation();
-              startEditing();
+              if (!readOnly) startEditing();
             }}
             className="truncate text-[13px] leading-tight font-medium text-foreground">
             {data.label}
