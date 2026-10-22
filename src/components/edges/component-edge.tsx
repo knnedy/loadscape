@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
   type Edge,
   type EdgeProps,
 } from "@xyflow/react";
 import type { TopologyEdgeData, TopologyNodeData } from "@/lib/types/topology";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
+import { useEdgeRoute } from "./edge-routes";
 
 type ComponentEdgeType = Edge<TopologyEdgeData, "component">;
 
@@ -29,44 +29,62 @@ export function ComponentEdge({
   selected,
 }: EdgeProps<ComponentEdgeType>) {
   const updateEdgeLabel = useTopologyStore((s) => s.updateEdgeLabel);
-  const allEdges = useTopologyStore((s) => s.edges);
-  const nodes = useTopologyStore((s) => s.nodes);
+
+  // Parallel edges between the same two nodes are spread apart.
+  const offset = useTopologyStore((s) => {
+    const siblings = s.edges.filter(
+      (e) =>
+        (e.source === source && e.target === target) ||
+        (e.source === target && e.target === source),
+    );
+    if (siblings.length < 2) return 0;
+    const index = siblings.findIndex((e) => e.id === id);
+    return (index - (siblings.length - 1) / 2) * 28;
+  });
+
+  const sourceCategory = useTopologyStore((s) => {
+    const node = s.nodes.find((n) => n.id === source);
+    return node && "category" in node.data
+      ? (node.data as TopologyNodeData).category
+      : undefined;
+  });
+
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data?.label ?? "");
+  // Enter and blur can both fire; only the first one counts.
+  const settledRef = useRef(false);
 
-  const siblings = allEdges.filter(
-    (e) =>
-      (e.source === source && e.target === target) ||
-      (e.source === target && e.target === source),
-  );
-  const index = siblings.findIndex((e) => e.id === id);
-  const offset =
-    siblings.length > 1 ? (index - (siblings.length - 1) / 2) * 28 : 0;
-
-  const [path, labelX, labelY] = getSmoothStepPath({
+  const { path, labelX, labelY } = useEdgeRoute({
     sourceX,
     sourceY,
+    sourcePosition,
     targetX,
     targetY,
-    sourcePosition,
     targetPosition,
-    centerY: (sourceY + targetY) / 2 + offset,
-    borderRadius: 8,
+    offset,
   });
 
   const isAsync = data?.style === "async";
-
-  const sourceNode = nodes.find((n) => n.id === source);
-  const sourceCategory =
-    sourceNode && "category" in sourceNode.data
-      ? (sourceNode.data as TopologyNodeData).category
-      : undefined;
   const edgeColor = sourceCategory
     ? `var(--cat-${sourceCategory})`
     : "var(--border-strong)";
 
+  function startEditing() {
+    settledRef.current = false;
+    setDraft(data?.label ?? "");
+    setEditing(true);
+  }
+
+  function cancel() {
+    settledRef.current = true;
+    setEditing(false);
+  }
+
   function commit() {
-    updateEdgeLabel(id, draft.trim());
+    if (settledRef.current) return;
+    settledRef.current = true;
+    const next = draft.trim();
+    if (next !== (data?.label ?? "")) updateEdgeLabel(id, next);
     setEditing(false);
   }
 
@@ -93,18 +111,20 @@ export function ComponentEdge({
           }}
           onDoubleClick={(e) => {
             e.stopPropagation();
-            setEditing(true);
+            startEditing();
           }}>
           {editing ? (
             <input
               autoFocus
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              onFocus={(e) => e.currentTarget.select()}
               onBlur={commit}
               onKeyDown={(e) => {
                 if (e.key === "Enter") commit();
-                if (e.key === "Escape") setEditing(false);
+                if (e.key === "Escape") cancel();
               }}
+              aria-label="Connection label"
               className="w-28 rounded-md border border-border bg-card px-1.5 py-0.5 text-center text-[11px] text-foreground outline-none"
             />
           ) : (
