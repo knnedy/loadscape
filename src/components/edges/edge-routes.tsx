@@ -104,6 +104,17 @@ export function useEdgeRoute({
   const obstacles = useContext(EdgeObstaclesContext);
 
   return useMemo(() => {
+    // The offset moves the middle segment of the stepped path: the vertical
+    // one for edges that leave sideways, the horizontal one otherwise.
+    const sideways =
+      sourcePosition === Position.Left || sourcePosition === Position.Right;
+    const lane =
+      offset === 0
+        ? {}
+        : sideways
+          ? { centerX: (sourceX + targetX) / 2 + offset }
+          : { centerY: (sourceY + targetY) / 2 + offset };
+
     const base = defaultPolyline({
       sourceX,
       sourceY,
@@ -111,7 +122,7 @@ export function useEdgeRoute({
       targetX,
       targetY,
       targetPosition,
-      centerY: (sourceY + targetY) / 2 + offset,
+      ...lane,
     });
 
     if (base.length >= 2 && !polylineHitsAny(base, obstacles)) {
