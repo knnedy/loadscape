@@ -24,6 +24,7 @@ import { GroupNode } from "@/components/nodes/group-node";
 import { NoteNode } from "@/components/nodes/note-node";
 import { ComponentEdge } from "@/components/edges/component-edge";
 import { ConnectionLine } from "@/components/edges/connection-line";
+import { EdgeRoutesProvider } from "@/components/edges/edge-routes";
 import { isConnectionValid } from "@/lib/topology-validation";
 import {
   useTopologyStore,
@@ -230,65 +231,67 @@ export function Canvas() {
 
   return (
     <div className="h-full w-full bg-background">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        connectionLineComponent={ConnectionLine}
-        snapToGrid={snapToGrid}
-        snapGrid={SNAP_GRID}
-        onNodesChange={handleNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        isValidConnection={isValidConnection}
-        onReconnect={onEdgeUpdate}
-        onReconnectStart={onEdgeUpdateStart}
-        onReconnectEnd={onEdgeUpdateEnd}
-        onNodeDragStart={beginDragCheckpoint}
-        onNodeDragStop={onNodeDragStop}
-        onSelectionDragStart={beginDragCheckpoint}
-        onSelectionDragStop={onSelectionDragStop}
-        onSelectionChange={onSelectionChange}
-        onNodeContextMenu={onNodeContextMenu}
-        onEdgeContextMenu={onEdgeContextMenu}
-        deleteKeyCode={null}
-        onNodeClick={(_, node) => selectNode(node.id)}
-        onEdgeClick={(_, edge) => selectEdge(edge.id)}
-        onPaneClick={() => {
-          selectNode(null);
-          selectEdge(null);
-        }}
-        fitView
-        fitViewOptions={{ maxZoom: 1, padding: 0.4 }}
-        connectionMode={ConnectionMode.Loose}>
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={24}
-          size={1.5}
-          color="var(--canvas-dot)"
-        />
-        {showMiniMap && (
-          <MiniMap
-            position="bottom-left"
-            className="border border-border! bg-card!"
-            maskColor="rgba(0,0,0,0.5)"
-            nodeColor={(node) => {
-              if (node.type === "group-container") return "transparent";
-              const category = (node.data as { category?: string }).category;
-              return category
-                ? `var(--cat-${category})`
-                : "var(--muted-foreground)";
-            }}
-            nodeStrokeColor="var(--border)"
-            nodeStrokeWidth={2}
-            pannable
-            zoomable
+      <EdgeRoutesProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          connectionLineComponent={ConnectionLine}
+          snapToGrid={snapToGrid}
+          snapGrid={SNAP_GRID}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          isValidConnection={isValidConnection}
+          onReconnect={onEdgeUpdate}
+          onReconnectStart={onEdgeUpdateStart}
+          onReconnectEnd={onEdgeUpdateEnd}
+          onNodeDragStart={beginDragCheckpoint}
+          onNodeDragStop={onNodeDragStop}
+          onSelectionDragStart={beginDragCheckpoint}
+          onSelectionDragStop={onSelectionDragStop}
+          onSelectionChange={onSelectionChange}
+          onNodeContextMenu={onNodeContextMenu}
+          onEdgeContextMenu={onEdgeContextMenu}
+          deleteKeyCode={null}
+          onNodeClick={(_, node) => selectNode(node.id)}
+          onEdgeClick={(_, edge) => selectEdge(edge.id)}
+          onPaneClick={() => {
+            selectNode(null);
+            selectEdge(null);
+          }}
+          fitView
+          fitViewOptions={{ maxZoom: 1, padding: 0.4 }}
+          connectionMode={ConnectionMode.Loose}>
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={24}
+            size={1.5}
+            color="var(--canvas-dot)"
           />
-        )}
-        <AlignmentGuides guides={guides} />
-        <SelectionToolbar />
-      </ReactFlow>
+          {showMiniMap && (
+            <MiniMap
+              position="bottom-left"
+              className="border border-border! bg-card!"
+              maskColor="rgba(0,0,0,0.5)"
+              nodeColor={(node) => {
+                if (node.type === "group-container") return "transparent";
+                const category = (node.data as { category?: string }).category;
+                return category
+                  ? `var(--cat-${category})`
+                  : "var(--muted-foreground)";
+              }}
+              nodeStrokeColor="var(--border)"
+              nodeStrokeWidth={2}
+              pannable
+              zoomable
+            />
+          )}
+          <AlignmentGuides guides={guides} />
+          <SelectionToolbar />
+        </ReactFlow>
+      </EdgeRoutesProvider>
       <CanvasContextMenu target={contextMenu} onClose={closeContextMenu} />
     </div>
   );
