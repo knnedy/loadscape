@@ -29,6 +29,7 @@ export function ComponentEdge({
   selected,
 }: EdgeProps<ComponentEdgeType>) {
   const updateEdgeLabel = useTopologyStore((s) => s.updateEdgeLabel);
+  const readOnly = useTopologyStore((s) => s.readOnly);
 
   // Parallel edges between the same two nodes are spread apart.
   const offset = useTopologyStore((s) => {
@@ -111,7 +112,7 @@ export function ComponentEdge({
           }}
           onDoubleClick={(e) => {
             e.stopPropagation();
-            startEditing();
+            if (!readOnly) startEditing();
           }}>
           {editing ? (
             <input
