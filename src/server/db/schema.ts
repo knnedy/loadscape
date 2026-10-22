@@ -61,6 +61,16 @@ export const topologies = pgTable("topologies", {
     .notNull(),
 });
 
+export const projectShares = pgTable("project_shares", {
+  projectId: uuid("project_id")
+    .primaryKey()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  createdAt: timestamp("created_at", { precision: 6, withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 export const snapshots = pgTable(
   "snapshots",
   {
@@ -189,6 +199,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     references: [users.id],
   }),
   topology: one(topologies),
+  share: one(projectShares),
   snapshots: many(snapshots),
 }));
 
@@ -201,6 +212,13 @@ export const snapshotsRelations = relations(snapshots, ({ one }) => ({
 export const topologiesRelations = relations(topologies, ({ one }) => ({
   project: one(projects, {
     fields: [topologies.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const projectSharesRelations = relations(projectShares, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectShares.projectId],
     references: [projects.id],
   }),
 }));
