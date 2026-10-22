@@ -17,6 +17,7 @@ type GroupNodeType = Node<TopologyGroupData, "group-container">;
 export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
   const renameGroup = useTopologyStore((s) => s.renameGroup);
   const updateGroupColor = useTopologyStore((s) => s.updateGroupColor);
+  const readOnly = useTopologyStore((s) => s.readOnly);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
@@ -47,7 +48,7 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
       <NodeResizer
         minWidth={220}
         minHeight={160}
-        isVisible={selected}
+        isVisible={selected && !readOnly}
         handleStyle={{ width: 8, height: 8, borderRadius: 2 }}
         lineStyle={{ borderColor: "var(--primary)" }}
       />
@@ -59,36 +60,43 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
         }}
       />
       <div className="nodrag absolute -top-3 left-3 flex items-center gap-1.5">
-        <Popover>
-          <PopoverTrigger
-            aria-label="Group color"
+        {readOnly ? (
+          <span
             className="h-3.5 w-3.5 shrink-0 rounded-full ring-2 ring-card"
             style={{ backgroundColor: data.color }}
           />
-          <PopoverContent
-            side="bottom"
-            align="start"
-            className="flex w-auto gap-1.5 p-2">
-            {groupColorPalette.map((color, index) => (
-              <button
-                key={color}
-                aria-label={`Color ${index + 1}`}
-                onClick={() => updateGroupColor(id, color)}
-                className="relative flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
-                style={{
-                  backgroundColor: color,
-                  boxShadow:
-                    color === data.color
-                      ? "0 0 0 2px var(--popover), 0 0 0 3.5px var(--foreground)"
-                      : undefined,
-                }}>
-                {color === data.color && (
-                  <Check size={11} className="text-white" strokeWidth={3} />
-                )}
-              </button>
-            ))}
-          </PopoverContent>
-        </Popover>
+        ) : (
+          <Popover>
+            <PopoverTrigger
+              aria-label="Group color"
+              className="h-3.5 w-3.5 shrink-0 rounded-full ring-2 ring-card"
+              style={{ backgroundColor: data.color }}
+            />
+            <PopoverContent
+              side="bottom"
+              align="start"
+              className="flex w-auto gap-1.5 p-2">
+              {groupColorPalette.map((color, index) => (
+                <button
+                  key={color}
+                  aria-label={`Color ${index + 1}`}
+                  onClick={() => updateGroupColor(id, color)}
+                  className="relative flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
+                  style={{
+                    backgroundColor: color,
+                    boxShadow:
+                      color === data.color
+                        ? "0 0 0 2px var(--popover), 0 0 0 3.5px var(--foreground)"
+                        : undefined,
+                  }}>
+                  {color === data.color && (
+                    <Check size={11} className="text-white" strokeWidth={3} />
+                  )}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+        )}
         {editing ? (
           <input
             autoFocus
@@ -107,7 +115,7 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
           <span
             onDoubleClick={(e) => {
               e.stopPropagation();
-              startEditing();
+              if (!readOnly) startEditing();
             }}
             className="rounded-md px-2 py-0.5 text-xs font-semibold text-white shadow-sm"
             style={{ backgroundColor: data.color }}>
