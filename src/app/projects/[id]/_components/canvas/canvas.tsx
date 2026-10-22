@@ -49,6 +49,7 @@ const SNAP_GRID: [number, number] = [24, 24];
 export function Canvas() {
   const nodes = useTopologyStore((s) => s.nodes);
   const edges = useTopologyStore((s) => s.edges);
+  const readOnly = useTopologyStore((s) => s.readOnly);
   const onEdgesChange = useTopologyStore((s) => s.onEdgesChange);
   const onConnect = useTopologyStore((s) => s.onConnect);
   const reconnectEdge = useTopologyStore((s) => s.reconnectEdge);
@@ -212,6 +213,8 @@ export function Canvas() {
   );
 
   useEffect(() => {
+    if (readOnly) return;
+
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
@@ -227,7 +230,7 @@ export function Canvas() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeId, duplicateNode, deleteSelection]);
+  }, [readOnly, selectedNodeId, duplicateNode, deleteSelection]);
 
   return (
     <div className="h-full w-full bg-background">
@@ -238,6 +241,10 @@ export function Canvas() {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionLineComponent={ConnectionLine}
+          nodesDraggable={!readOnly}
+          nodesConnectable={!readOnly}
+          edgesReconnectable={!readOnly}
+          elementsSelectable={!readOnly}
           snapToGrid={snapToGrid}
           snapGrid={SNAP_GRID}
           onNodesChange={handleNodesChange}
@@ -252,8 +259,8 @@ export function Canvas() {
           onSelectionDragStart={beginDragCheckpoint}
           onSelectionDragStop={onSelectionDragStop}
           onSelectionChange={onSelectionChange}
-          onNodeContextMenu={onNodeContextMenu}
-          onEdgeContextMenu={onEdgeContextMenu}
+          onNodeContextMenu={readOnly ? undefined : onNodeContextMenu}
+          onEdgeContextMenu={readOnly ? undefined : onEdgeContextMenu}
           deleteKeyCode={null}
           onNodeClick={(_, node) => selectNode(node.id)}
           onEdgeClick={(_, edge) => selectEdge(edge.id)}
@@ -289,7 +296,7 @@ export function Canvas() {
             />
           )}
           <AlignmentGuides guides={guides} />
-          <SelectionToolbar />
+          {!readOnly && <SelectionToolbar />}
         </ReactFlow>
       </EdgeRoutesProvider>
       <CanvasContextMenu target={contextMenu} onClose={closeContextMenu} />
