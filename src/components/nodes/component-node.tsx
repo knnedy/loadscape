@@ -75,7 +75,12 @@ export function ComponentNode({
         width: isCapsule ? undefined : 160,
         minWidth: isCapsule ? 110 : undefined,
       }}>
-      <Handle type="target" position={Position.Left} style={handleStyle} />
+      <Handle
+        id="in"
+        type="target"
+        position={Position.Left}
+        style={handleStyle}
+      />
 
       <div className={`flex items-center gap-2 ${isCapsule ? "" : "mb-0.5"}`}>
         {component && (
@@ -124,7 +129,12 @@ export function ComponentNode({
         </>
       )}
 
-      <Handle type="source" position={Position.Right} style={handleStyle} />
+      <Handle
+        id="out"
+        type="source"
+        position={Position.Right}
+        style={handleStyle}
+      />
     </div>
   );
 }
