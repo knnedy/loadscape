@@ -13,14 +13,16 @@ const TopologyStoreContext = createContext<TopologyStore | null>(null);
 
 export function TopologyProvider({
   initialTopology,
+  readOnly = false,
   children,
 }: {
   initialTopology: InitialTopology;
+  readOnly?: boolean;
   children: ReactNode;
 }) {
   const storeRef = useRef<TopologyStore | null>(null);
   if (!storeRef.current) {
-    storeRef.current = createTopologyStore(initialTopology);
+    storeRef.current = createTopologyStore(initialTopology, readOnly);
   }
 
   return (
