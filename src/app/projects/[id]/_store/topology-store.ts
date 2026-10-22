@@ -44,12 +44,17 @@ export type TopologyState = NodesSlice &
   AnnotationsSlice &
   DiagramSlice &
   ViewSlice &
-  UiSlice;
+  UiSlice & {
+    // Set once at creation for the shared viewer. The UI hides or disables
+    // every editing control; writes are refused server-side regardless.
+    readOnly: boolean;
+  };
 
 export type TopologyStore = ReturnType<typeof createTopologyStore>;
 
 export function createTopologyStore(
   initial: InitialTopology = { nodes: [], edges: [] },
+  readOnly = false,
 ) {
   const counters = createIdCounters(initial.nodes);
 
@@ -63,6 +68,7 @@ export function createTopologyStore(
         ...createDiagramSlice(counters)(...args),
         ...createViewSlice(...args),
         ...createUiSlice(...args),
+        readOnly,
       }),
       {
         limit: HISTORY_LIMIT,
