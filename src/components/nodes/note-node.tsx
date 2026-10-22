@@ -21,6 +21,7 @@ const COMMIT_DELAY_MS = 500;
 export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
   const updateNoteText = useTopologyStore((s) => s.updateNoteText);
   const updateNoteColor = useTopologyStore((s) => s.updateNoteColor);
+  const readOnly = useTopologyStore((s) => s.readOnly);
 
   const [draft, setDraft] = useState<string | null>(null);
   const draftRef = useRef<string | null>(null);
@@ -46,7 +47,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
       <NodeResizer
         minWidth={140}
         minHeight={100}
-        isVisible={selected}
+        isVisible={selected && !readOnly}
         handleStyle={{ width: 8, height: 8, borderRadius: 2 }}
         lineStyle={{ borderColor: "var(--primary)" }}
       />
@@ -63,40 +64,52 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
               style={{ color: data.color }}
               className="shrink-0"
             />
-            <Popover>
-              <PopoverTrigger
-                aria-label="Note color"
-                className="nodrag h-3 w-3 shrink-0 rounded-full"
+            {readOnly ? (
+              <span
+                className="h-3 w-3 shrink-0 rounded-full"
                 style={{ backgroundColor: data.color }}
               />
-              <PopoverContent
-                side="top"
-                align="start"
-                className="flex w-auto gap-1.5 p-2">
-                {groupColorPalette.map((color, index) => (
-                  <button
-                    key={color}
-                    aria-label={`Color ${index + 1}`}
-                    onClick={() => updateNoteColor(id, color)}
-                    className="relative flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
-                    style={{
-                      backgroundColor: color,
-                      boxShadow:
-                        color === data.color
-                          ? "0 0 0 2px var(--popover), 0 0 0 3.5px var(--foreground)"
-                          : undefined,
-                    }}>
-                    {color === data.color && (
-                      <Check size={11} className="text-white" strokeWidth={3} />
-                    )}
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
+            ) : (
+              <Popover>
+                <PopoverTrigger
+                  aria-label="Note color"
+                  className="nodrag h-3 w-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: data.color }}
+                />
+                <PopoverContent
+                  side="top"
+                  align="start"
+                  className="flex w-auto gap-1.5 p-2">
+                  {groupColorPalette.map((color, index) => (
+                    <button
+                      key={color}
+                      aria-label={`Color ${index + 1}`}
+                      onClick={() => updateNoteColor(id, color)}
+                      className="relative flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
+                      style={{
+                        backgroundColor: color,
+                        boxShadow:
+                          color === data.color
+                            ? "0 0 0 2px var(--popover), 0 0 0 3.5px var(--foreground)"
+                            : undefined,
+                      }}>
+                      {color === data.color && (
+                        <Check
+                          size={11}
+                          className="text-white"
+                          strokeWidth={3}
+                        />
+                      )}
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </div>
         <textarea
           value={draft ?? data.text}
+          readOnly={readOnly}
           onChange={(e) => {
             draftRef.current = e.target.value;
             setDraft(e.target.value);
@@ -105,7 +118,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
           }}
           onBlur={flush}
           aria-label="Note text"
-          placeholder="Write a note..."
+          placeholder={readOnly ? undefined : "Write a note..."}
           className="nodrag nowheel flex-1 resize-none border-none bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
         />
       </div>
