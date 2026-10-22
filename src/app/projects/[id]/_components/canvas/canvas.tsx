@@ -23,6 +23,7 @@ import { ComponentNode } from "@/components/nodes/component-node";
 import { GroupNode } from "@/components/nodes/group-node";
 import { NoteNode } from "@/components/nodes/note-node";
 import { ComponentEdge } from "@/components/edges/component-edge";
+import { ConnectionLine } from "@/components/edges/connection-line";
 import { isConnectionValid } from "@/lib/topology-validation";
 import {
   useTopologyStore,
@@ -234,6 +235,7 @@ export function Canvas() {
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        connectionLineComponent={ConnectionLine}
         snapToGrid={snapToGrid}
         snapGrid={SNAP_GRID}
         onNodesChange={handleNodesChange}
