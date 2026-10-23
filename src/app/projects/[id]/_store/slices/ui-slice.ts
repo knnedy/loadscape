@@ -7,7 +7,8 @@ export type ActivePanel =
   | "search"
   | "shortcuts"
   | "history"
-  | "save-template";
+  | "save-template"
+  | "share";
 
 export interface UiSlice {
   activePanel: ActivePanel | null;
