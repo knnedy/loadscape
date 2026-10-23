@@ -6,6 +6,7 @@ import { ProjectIsland } from "./islands/project-island";
 import { ZoomControls } from "./islands/zoom-controls";
 import { HistoryDialog } from "./panels/history-dialog";
 import { NodeSearch } from "./panels/node-search";
+import { ShareDialog } from "./panels/share-dialog";
 import { ShortcutsDialog } from "./panels/shortcuts-dialog";
 import { Canvas } from "./canvas/canvas";
 import { ConfigPanel } from "./inspector/config-panel";
@@ -27,6 +28,7 @@ interface WorkspaceShellProps {
   initialTopology: InitialTopology;
   userTemplates: TemplateSummary[];
   snapshots: SnapshotSummary[];
+  shareToken?: string | null;
 }
 
 function WorkspaceLayout({
@@ -35,6 +37,7 @@ function WorkspaceLayout({
   user,
   userTemplates,
   snapshots,
+  shareToken = null,
 }: Omit<WorkspaceShellProps, "initialTopology">) {
   useGlobalShortcuts();
 
@@ -51,6 +54,7 @@ function WorkspaceLayout({
       </div>
       <ConfigPanel />
       <HistoryDialog projectId={projectId} snapshots={snapshots} />
+      <ShareDialog projectId={projectId} initialToken={shareToken} />
       <NodeSearch />
       <ShortcutsDialog />
     </div>
