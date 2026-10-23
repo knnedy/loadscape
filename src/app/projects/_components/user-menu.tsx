@@ -1,11 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LogOut, Settings } from "lucide-react";
+import { useTheme } from "next-themes";
+import { LogOut, Moon, Settings, Sun } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -19,6 +24,7 @@ export interface AppUser {
 
 export function UserMenu({ user }: { user: AppUser }) {
   const router = useRouter();
+  const { resolvedTheme, setTheme } = useTheme();
   const initial = (user.name || user.email).charAt(0).toUpperCase();
 
   async function handleSignOut() {
@@ -45,6 +51,22 @@ export function UserMenu({ user }: { user: AppUser }) {
           </p>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Theme</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={resolvedTheme ?? "dark"}
+            onValueChange={(value) => setTheme(value)}>
+            <DropdownMenuRadioItem value="light" className="gap-2 text-sm">
+              <Sun size={14} />
+              Light
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="dark" className="gap-2 text-sm">
+              <Moon size={14} />
+              Dark
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="gap-2 text-sm">
           <Settings size={14} />
