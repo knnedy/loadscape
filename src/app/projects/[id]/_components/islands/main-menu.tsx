@@ -79,6 +79,9 @@ export function MainMenu() {
             <DropdownMenuItem onClick={() => openPanel("history")}>
               Version history...
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openPanel("share")}>
+              Share...
+            </DropdownMenuItem>
             <DropdownMenuItem
               disabled={!hasNodes}
               onClick={() => openPanel("save-template")}>
