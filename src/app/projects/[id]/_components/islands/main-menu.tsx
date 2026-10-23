@@ -18,6 +18,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useDiagramFiles } from "../../_hooks/use-diagram-files";
 import { formatKey } from "../../_lib/shortcuts";
 import {
@@ -34,7 +39,13 @@ function Keys({ keys }: { keys: string[] }) {
   );
 }
 
-export function MainMenu() {
+export function MainMenu({
+  onOpenChange,
+  showTooltip = true,
+}: {
+  onOpenChange?: (open: boolean) => void;
+  showTooltip?: boolean;
+}) {
   const { resolvedTheme, setTheme } = useTheme();
   const { fitView } = useReactFlow();
   const { exportPng, exportJson, openImportPicker } = useDiagramFiles();
@@ -65,13 +76,20 @@ export function MainMenu() {
   const canRedo = useTopologyTemporalStore((s) => s.futureStates.length > 0);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label="Main menu"
-        className="flex h-8 items-center gap-1 rounded-lg px-1.5 text-primary transition-colors outline-none hover:bg-accent aria-expanded:bg-accent">
-        <Waypoints size={16} />
-        <ChevronDown size={10} className="text-muted-foreground" />
-      </DropdownMenuTrigger>
+    <DropdownMenu onOpenChange={(open) => onOpenChange?.(open)}>
+      <Tooltip disabled={!showTooltip}>
+        <TooltipTrigger
+          render={
+            <DropdownMenuTrigger
+              aria-label="Main menu"
+              className="flex h-8 items-center gap-1 rounded-lg px-1.5 text-primary transition-colors outline-none hover:bg-accent aria-expanded:bg-accent">
+              <Waypoints size={16} />
+              <ChevronDown size={10} className="text-muted-foreground" />
+            </DropdownMenuTrigger>
+          }
+        />
+        <TooltipContent side="bottom">Menu</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="start" sideOffset={10} className="w-60">
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>File</DropdownMenuSubTrigger>
