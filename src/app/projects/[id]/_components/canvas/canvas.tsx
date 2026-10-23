@@ -274,8 +274,8 @@ export function Canvas() {
           <Background
             variant={BackgroundVariant.Dots}
             gap={24}
-            size={1.5}
-            color="var(--canvas-dot)"
+            size={1.75}
+            color="color-mix(in oklch, var(--foreground) 30%, transparent)"
           />
           {showMiniMap && (
             <MiniMap
