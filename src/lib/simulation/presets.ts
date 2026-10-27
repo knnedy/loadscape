@@ -1,4 +1,4 @@
-import type { Fanout, SimEdge, SimGraph, SimNode, EdgeMode } from "./types";
+import type { EdgeMode, Fanout, SimEdge, SimGraph, SimNode } from "./types";
 
 export type PresetKey =
   | "client"
@@ -33,7 +33,30 @@ export interface GraphInput {
   edges: EdgeInput[];
 }
 
+const MAX_RATE = 1_000_000_000;
+const MAX_LATENCY_MS = 600_000;
 const MAX_INSTANCES = 10_000;
+
+const RANGES = {
+  capacity: { min: 1, max: MAX_RATE },
+  instances: { min: 1, max: MAX_INSTANCES },
+  buffer: { min: 0, max: MAX_RATE },
+  hitRatio: { min: 0, max: 1 },
+  latencyMs: { min: 0, max: MAX_LATENCY_MS },
+  failRate: { min: 0, max: 1 },
+  rps: { min: 0, max: MAX_RATE },
+  share: { min: 0, max: 1 },
+} as const;
+
+const NUMERIC_KEYS = [
+  "capacity",
+  "instances",
+  "buffer",
+  "hitRatio",
+  "latencyMs",
+  "failRate",
+  "rps",
+] as const;
 
 export const PRESETS: Record<PresetKey, Behaviour> = {
   client: {
@@ -126,33 +149,35 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
   },
 };
 
-function clamp(
-  value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-): number {
-  if (typeof value !== "number" || Number.isNaN(value)) return fallback;
+export function sanitizeOverrides(raw: Record<string, unknown>): NodeOverrides {
+  const clean: NodeOverrides = {};
+
+  for (const key of NUMERIC_KEYS) {
+    const value = raw[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    const { min, max } = RANGES[key];
+    const bounded = Math.min(max, Math.max(min, value));
+    clean[key] = key === "instances" ? Math.round(bounded) : bounded;
+  }
+
+  if (raw.fanout === "all" || raw.fanout === "split") {
+    clean.fanout = raw.fanout as Fanout;
+  }
+
+  return clean;
+}
+
+export function sanitizeShare(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  const { min, max } = RANGES.share;
   return Math.min(max, Math.max(min, value));
 }
 
 export function resolveNode(input: NodeInput): SimNode {
-  const base = PRESETS[input.preset];
-  const o = input.overrides ?? {};
-  const fanout: Fanout =
-    o.fanout === "all" || o.fanout === "split" ? o.fanout : base.fanout;
-
   return {
+    ...PRESETS[input.preset],
+    ...sanitizeOverrides(input.overrides ?? {}),
     id: input.id,
-    role: base.role,
-    capacity: clamp(o.capacity, base.capacity, 1, Infinity),
-    instances: Math.round(clamp(o.instances, base.instances, 1, MAX_INSTANCES)),
-    buffer: clamp(o.buffer, base.buffer, 0, Infinity),
-    hitRatio: clamp(o.hitRatio, base.hitRatio, 0, 1),
-    fanout,
-    latencyMs: clamp(o.latencyMs, base.latencyMs, 0, Infinity),
-    failRate: clamp(o.failRate, base.failRate, 0, 1),
-    rps: clamp(o.rps, base.rps, 0, Infinity),
   };
 }
 
@@ -162,7 +187,7 @@ export function resolveEdge(input: EdgeInput): SimEdge {
     source: input.source,
     target: input.target,
     mode: input.mode === "async" ? "async" : "sync",
-    share: clamp(input.share, 1, 0, 1),
+    share: sanitizeShare(input.share) ?? 1,
   };
 }
 
