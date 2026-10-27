@@ -41,7 +41,10 @@ export interface NodesSlice {
   updateNodeCapacity: (id: string, capacity: number | undefined) => void;
   updateSelectedCapacity: (capacity: number | undefined) => void;
   updateNodeConfig: (id: string, patch: NodeConfigPatch) => void;
-  updateSelectedConfig: (patch: NodeConfigPatch) => void;
+  updateSelectedConfig: (
+    patch: NodeConfigPatch,
+    appliesTo?: (data: TopologyNodeData) => boolean,
+  ) => void;
   renameNode: (id: string, label: string) => void;
   duplicateNode: (id: string) => void;
   deleteNode: (id: string) => void;
@@ -116,10 +119,12 @@ export const createNodesSlice =
             : node,
         ),
       }),
-    updateSelectedConfig: (patch) =>
+    updateSelectedConfig: (patch, appliesTo) =>
       set({
         nodes: get().nodes.map((node) =>
-          node.selected && node.type === "component"
+          node.selected &&
+          node.type === "component" &&
+          (!appliesTo || appliesTo(node.data as TopologyNodeData))
             ? ({
                 ...node,
                 data: applyConfig(node.data as TopologyNodeData, patch),
