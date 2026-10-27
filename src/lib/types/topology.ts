@@ -1,3 +1,5 @@
+import type { Fanout } from "@/lib/simulation/types";
+
 export type NodeCategory =
   | "client"
   | "networking"
@@ -17,6 +19,13 @@ export interface TopologyNodeData extends Record<string, unknown> {
   label: string;
   category: NodeCategory;
   capacity?: number;
+  instances?: number;
+  buffer?: number;
+  hitRatio?: number;
+  fanout?: Fanout;
+  latencyMs?: number;
+  failRate?: number;
+  rps?: number;
 }
 
 export interface TopologyGroupData extends Record<string, unknown> {
@@ -33,6 +42,7 @@ export interface TopologyEdgeData extends Record<string, unknown> {
   label?: string;
   style: EdgeStyle;
   direction: EdgeDirection;
+  share?: number;
 }
 
 export type EdgeStyle = "sync" | "async";
