@@ -1,4 +1,5 @@
 import { componentCatalog } from "@/lib/catalog/components";
+import { sanitizeOverrides, sanitizeShare } from "@/lib/simulation/presets";
 import type { AppNode, AppEdge } from "../_store/topology-store";
 
 export const TOPOLOGY_FILE_VERSION = 1;
@@ -6,6 +7,17 @@ export const MAX_NODES = 500;
 export const MAX_EDGES = 1000;
 
 const NODE_TYPES = new Set(["component", "group-container", "note"]);
+
+const OVERRIDE_KEYS = [
+  "capacity",
+  "instances",
+  "buffer",
+  "hitRatio",
+  "fanout",
+  "latencyMs",
+  "failRate",
+  "rps",
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -21,6 +33,16 @@ function stripTransient<T extends object>(item: T): T {
     resizing?: boolean;
   };
   return rest as T;
+}
+
+// Invalid override values are dropped so the component falls back to its
+// preset, and valid ones are clamped to the engine's ranges.
+function sanitizeNodeData(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const rest = { ...data };
+  for (const key of OVERRIDE_KEYS) delete rest[key];
+  return { ...rest, ...sanitizeOverrides(data) };
 }
 
 export function serializeTopology(nodes: AppNode[], edges: AppEdge[]): string {
@@ -116,13 +138,27 @@ export function validateTopology(raw: unknown): {
   // React Flow requires parents to precede their children.
   const nodes = (raw.nodes as AppNode[])
     .map(stripTransient)
+    .map((node) =>
+      node.type === "component"
+        ? ({ ...node, data: sanitizeNodeData(node.data) } as AppNode)
+        : node,
+    )
     .sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0));
 
-  const edges = (raw.edges as AppEdge[]).map((edge) => ({
-    ...stripTransient(edge),
-    type: "component",
-    data: { style: "sync", direction: "forward", ...edge.data },
-  })) as AppEdge[];
+  const edges = (raw.edges as AppEdge[]).map((edge) => {
+    const { share, ...data } = (edge.data ?? {}) as Record<string, unknown>;
+    const cleanShare = sanitizeShare(share);
+    return {
+      ...stripTransient(edge),
+      type: "component",
+      data: {
+        style: "sync",
+        direction: "forward",
+        ...data,
+        ...(cleanShare === undefined ? {} : { share: cleanShare }),
+      },
+    };
+  }) as AppEdge[];
 
   return { nodes, edges };
 }
