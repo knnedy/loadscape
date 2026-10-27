@@ -1,4 +1,7 @@
 import { categories, componentCatalog } from "@/lib/catalog/components";
+import { fromTopology } from "@/lib/simulation/from-topology";
+import { orderGraph } from "@/lib/simulation/graph";
+import { resolveGraph } from "@/lib/simulation/presets";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import type { AppEdge, AppNode } from "../_store/topology-store";
 
@@ -16,6 +19,7 @@ export interface Readiness {
   issues: ReadinessIssue[];
   errorCount: number;
   warningCount: number;
+  canRun: boolean;
 }
 
 // The first catalog category holds the Client component, which originates
@@ -30,6 +34,7 @@ const EMPTY: Readiness = {
   issues: [],
   errorCount: 0,
   warningCount: 0,
+  canRun: false,
 };
 
 export function analyzeReadiness(
@@ -56,6 +61,12 @@ export function analyzeReadiness(
       severity: "error",
       message: `Add a ${TRAFFIC_SOURCE_LABEL} to originate traffic.`,
     });
+  } else {
+    // The engine decides what can run, so the UI and the engine can't disagree.
+    const ordered = orderGraph(resolveGraph(fromTopology(nodes, edges)));
+    if (!ordered.ok) {
+      issues.push({ id: "graph", severity: "error", message: ordered.error });
+    }
   }
 
   for (const node of components) {
@@ -69,15 +80,6 @@ export function analyzeReadiness(
         nodeId: node.id,
       });
     }
-
-    if (!(typeof data.capacity === "number" && data.capacity > 0)) {
-      issues.push({
-        id: `capacity-${node.id}`,
-        severity: "warning",
-        message: `${data.label} has no capacity set.`,
-        nodeId: node.id,
-      });
-    }
   }
 
   const errorCount = issues.filter((i) => i.severity === "error").length;
@@ -88,5 +90,6 @@ export function analyzeReadiness(
     ),
     errorCount,
     warningCount: issues.length - errorCount,
+    canRun: errorCount === 0,
   };
 }
