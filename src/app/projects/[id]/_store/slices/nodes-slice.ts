@@ -38,8 +38,6 @@ export interface NodesSlice {
   nodes: AppNode[];
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   addComponent: (component: ComponentDef) => void;
-  updateNodeCapacity: (id: string, capacity: number | undefined) => void;
-  updateSelectedCapacity: (capacity: number | undefined) => void;
   updateNodeConfig: (id: string, patch: NodeConfigPatch) => void;
   updateSelectedConfig: (
     patch: NodeConfigPatch,
@@ -92,22 +90,6 @@ export const createNodesSlice =
       };
       set({ nodes: [...get().nodes, newNode] });
     },
-    updateNodeCapacity: (id, capacity) =>
-      set({
-        nodes: get().nodes.map((node) =>
-          node.id === id ? { ...node, data: { ...node.data, capacity } } : node,
-        ),
-      }),
-    // Bulk edits read React Flow's `selected` flags, like deleteSelection,
-    // and write everything in one `set` so it is a single undo step.
-    updateSelectedCapacity: (capacity) =>
-      set({
-        nodes: get().nodes.map((node) =>
-          node.selected && node.type === "component"
-            ? ({ ...node, data: { ...node.data, capacity } } as AppNode)
-            : node,
-        ),
-      }),
     updateNodeConfig: (id, patch) =>
       set({
         nodes: get().nodes.map((node) =>
@@ -119,6 +101,8 @@ export const createNodesSlice =
             : node,
         ),
       }),
+    // Bulk edits read React Flow's `selected` flags, like deleteSelection,
+    // and write everything in one `set` so it is a single undo step.
     updateSelectedConfig: (patch, appliesTo) =>
       set({
         nodes: get().nodes.map((node) =>
