@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { capacityPresets } from "@/lib/catalog/capacity-presets";
+import { defaultCapacity, limitsCapacity } from "@/lib/simulation/capacity";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import { cn } from "@/lib/utils";
 import { useTopologyStore } from "../../_store/topology-provider";
+import { CapacityField } from "./capacity-field";
 
 const EDGE_STYLES = ["sync", "async"] as const;
 const EDGE_DIRECTIONS = ["forward", "bidirectional", "none"] as const;
@@ -25,12 +25,21 @@ function segmentClass(active: boolean, small = false) {
   );
 }
 
+function common<T>(values: T[]): { value: T | undefined; mixed: boolean } {
+  return new Set(values).size > 1
+    ? { value: undefined, mixed: true }
+    : { value: values[0], mixed: false };
+}
+
+// Clients and external services have unlimited capacity, so a capacity
+// value written to them would throttle the traffic they generate or answer.
+const limitsLoad = (data: TopologyNodeData) =>
+  limitsCapacity(data.componentId, data.category);
+
 export function BulkEditPanel() {
   const nodes = useTopologyStore((s) => s.nodes);
   const edges = useTopologyStore((s) => s.edges);
-  const updateSelectedCapacity = useTopologyStore(
-    (s) => s.updateSelectedCapacity,
-  );
+  const updateSelectedConfig = useTopologyStore((s) => s.updateSelectedConfig);
   const updateSelectedEdges = useTopologyStore((s) => s.updateSelectedEdges);
 
   const selection = useMemo(() => {
@@ -57,11 +66,15 @@ export function BulkEditPanel() {
     .filter(Boolean)
     .join(", ");
 
-  const capacities = components.map(
-    (n) => (n.data as TopologyNodeData).capacity,
+  const limiting = components
+    .map((n) => n.data as TopologyNodeData)
+    .filter(limitsLoad);
+  const capacity = common(limiting.map((d) => d.capacity));
+  const instances = common(limiting.map((d) => d.instances));
+  const defaults = common(
+    limiting.map((d) => defaultCapacity(d.componentId, d.category)),
   );
-  const capacityMixed = new Set(capacities).size > 1;
-  const capacity = capacityMixed ? undefined : capacities[0];
+  const base = defaults.mixed ? undefined : defaults.value;
 
   const styles = new Set(selectedEdges.map((e) => e.data?.style));
   const directions = new Set(selectedEdges.map((e) => e.data?.direction));
@@ -77,43 +90,44 @@ export function BulkEditPanel() {
       <p className="mt-2 text-sm text-muted-foreground">{summary}</p>
 
       {components.length > 0 && (
-        <div className="mt-5 flex flex-col gap-1.5">
-          <Label htmlFor="bulk-capacity" className="text-xs">
-            Capacity (req/sec)
-          </Label>
-          <Input
-            id="bulk-capacity"
-            type="number"
-            value={capacity ?? ""}
-            placeholder={capacityMixed ? "Mixed" : undefined}
-            onChange={(e) =>
-              updateSelectedCapacity(
-                e.target.value === "" ? undefined : Number(e.target.value),
-              )
-            }
-            className="font-mono"
-          />
-          <div className="mt-1 flex gap-1.5">
-            {capacityPresets.map(({ label, value }) => (
-              <button
-                key={label}
-                onClick={() => updateSelectedCapacity(value)}
-                className={cn(
-                  "flex flex-1 flex-col items-center rounded-md border px-2 py-1 transition-colors",
-                  !capacityMixed && capacity === value
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:bg-accent",
-                )}>
-                <span className="text-xs">{label}</span>
-                <span className="font-mono text-[11px]">
-                  {value.toLocaleString("en-US")}
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Applies to {plural(components.length, "component")}.
-          </p>
+        <div className="mt-5 flex flex-col gap-2">
+          {limiting.length > 0 ? (
+            <>
+              <CapacityField
+                idPrefix="bulk"
+                base={base}
+                capacity={capacity.value}
+                capacityMixed={capacity.mixed}
+                capacityOverridden={limiting.some(
+                  (d) => d.capacity !== undefined,
+                )}
+                instances={instances.value}
+                instancesMixed={instances.mixed}
+                onCapacityChange={(value) =>
+                  updateSelectedConfig({ capacity: value }, limitsLoad)
+                }
+                onInstancesChange={(value) =>
+                  updateSelectedConfig({ instances: value }, limitsLoad)
+                }
+              />
+              {base === undefined && (
+                <p className="text-xs text-muted-foreground">
+                  These components have different defaults, so a value here
+                  replaces all of them.
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {limiting.length === components.length
+                  ? `Applies to ${plural(components.length, "component")}.`
+                  : `Applies to ${limiting.length} of ${plural(components.length, "component")}. The rest don't limit load.`}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              None of the selected components limit load, so there is no
+              capacity to edit.
+            </p>
+          )}
         </div>
       )}
 
