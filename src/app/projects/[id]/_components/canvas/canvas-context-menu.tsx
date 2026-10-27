@@ -9,8 +9,14 @@ import {
   type ReactNode,
 } from "react";
 import { Check, Copy, Trash2 } from "lucide-react";
-import { capacityPresets } from "@/lib/catalog/capacity-presets";
 import { groupColorPalette } from "@/lib/catalog/group-colors";
+import {
+  capacityOverride,
+  capacityTiers,
+  defaultCapacity,
+  formatRate,
+  limitsCapacity,
+} from "@/lib/simulation/capacity";
 import type {
   EdgeDirection,
   EdgeStyle,
@@ -213,7 +219,7 @@ function NodeMenuItems({ id, onClose }: { id: string; onClose: () => void }) {
   const duplicateNode = useTopologyStore((s) => s.duplicateNode);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
   const deleteSelection = useTopologyStore((s) => s.deleteSelection);
-  const updateNodeCapacity = useTopologyStore((s) => s.updateNodeCapacity);
+  const updateNodeConfig = useTopologyStore((s) => s.updateNodeConfig);
   const updateGroupColor = useTopologyStore((s) => s.updateGroupColor);
   const updateNoteColor = useTopologyStore((s) => s.updateNoteColor);
 
@@ -239,7 +245,10 @@ function NodeMenuItems({ id, onClose }: { id: string; onClose: () => void }) {
   }
 
   if (node.type === "component") {
-    const { capacity } = node.data as TopologyNodeData;
+    const data = node.data as TopologyNodeData;
+    const limits = limitsCapacity(data.componentId, data.category);
+    const base = defaultCapacity(data.componentId, data.category);
+    const current = data.capacity ?? base;
     return (
       <>
         <Item
@@ -248,16 +257,24 @@ function NodeMenuItems({ id, onClose }: { id: string; onClose: () => void }) {
           shortcut={["mod", "D"]}
           onSelect={run(() => duplicateNode(id))}
         />
-        <Divider />
-        <Heading>Capacity</Heading>
-        {capacityPresets.map(({ label, value }) => (
-          <Item
-            key={label}
-            checked={capacity === value}
-            label={`${label} (${value.toLocaleString("en-US")} req/s)`}
-            onSelect={run(() => updateNodeCapacity(id, value))}
-          />
-        ))}
+        {limits && (
+          <>
+            <Divider />
+            <Heading>Capacity</Heading>
+            {capacityTiers(base).map((tier) => (
+              <Item
+                key={tier.label}
+                checked={current === tier.value}
+                label={`${tier.label} (${formatRate(tier.value)} req/s)`}
+                onSelect={run(() =>
+                  updateNodeConfig(id, {
+                    capacity: capacityOverride(tier.value, base),
+                  }),
+                )}
+              />
+            ))}
+          </>
+        )}
         <Divider />
         <Item
           destructive
