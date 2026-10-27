@@ -6,12 +6,42 @@ import type { IdCounters } from "../id-counters";
 import type { TopologyTemporal } from "../temporal";
 import type { AppNode, TopologyState } from "../topology-store";
 
+export type NodeConfigPatch = Partial<
+  Pick<
+    TopologyNodeData,
+    | "capacity"
+    | "instances"
+    | "buffer"
+    | "hitRatio"
+    | "fanout"
+    | "latencyMs"
+    | "failRate"
+    | "rps"
+  >
+>;
+
+// An undefined value removes the key, so stored data keeps only the values
+// a user changed and everything else comes from the component's preset.
+function applyConfig(
+  data: TopologyNodeData,
+  patch: NodeConfigPatch,
+): TopologyNodeData {
+  const next: Record<string, unknown> = { ...data };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) delete next[key];
+    else next[key] = value;
+  }
+  return next as TopologyNodeData;
+}
+
 export interface NodesSlice {
   nodes: AppNode[];
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   addComponent: (component: ComponentDef) => void;
   updateNodeCapacity: (id: string, capacity: number | undefined) => void;
   updateSelectedCapacity: (capacity: number | undefined) => void;
+  updateNodeConfig: (id: string, patch: NodeConfigPatch) => void;
+  updateSelectedConfig: (patch: NodeConfigPatch) => void;
   renameNode: (id: string, label: string) => void;
   duplicateNode: (id: string) => void;
   deleteNode: (id: string) => void;
@@ -72,6 +102,28 @@ export const createNodesSlice =
         nodes: get().nodes.map((node) =>
           node.selected && node.type === "component"
             ? ({ ...node, data: { ...node.data, capacity } } as AppNode)
+            : node,
+        ),
+      }),
+    updateNodeConfig: (id, patch) =>
+      set({
+        nodes: get().nodes.map((node) =>
+          node.id === id && node.type === "component"
+            ? ({
+                ...node,
+                data: applyConfig(node.data as TopologyNodeData, patch),
+              } as AppNode)
+            : node,
+        ),
+      }),
+    updateSelectedConfig: (patch) =>
+      set({
+        nodes: get().nodes.map((node) =>
+          node.selected && node.type === "component"
+            ? ({
+                ...node,
+                data: applyConfig(node.data as TopologyNodeData, patch),
+              } as AppNode)
             : node,
         ),
       }),
