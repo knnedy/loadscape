@@ -39,6 +39,7 @@ export interface EdgesSlice {
   updateEdgeLabel: (id: string, label: string) => void;
   updateEdgeStyle: (id: string, style: EdgeStyle) => void;
   updateEdgeDirection: (id: string, direction: EdgeDirection) => void;
+  updateEdgeShare: (id: string, share: number | undefined) => void;
   updateSelectedEdges: (patch: {
     style?: EdgeStyle;
     direction?: EdgeDirection;
@@ -101,6 +102,19 @@ export const createEdgesSlice =
               }
             : e,
         ),
+      }),
+    // An undefined share removes the key, so stored data keeps only a
+    // share the user changed and every other edge uses the default of 1.
+    updateEdgeShare: (id, share) =>
+      set({
+        edges: get().edges.map((e) => {
+          if (e.id !== id) return e;
+          const { share: _previous, ...rest } = e.data!;
+          return {
+            ...e,
+            data: share === undefined ? rest : { ...rest, share },
+          } as AppEdge;
+        }),
       }),
     updateSelectedEdges: (patch) =>
       set({
