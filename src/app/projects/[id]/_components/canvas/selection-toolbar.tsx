@@ -8,17 +8,20 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { capacityPresets } from "@/lib/catalog/capacity-presets";
+import {
+  capacityOverride,
+  capacityTiers,
+  defaultCapacity,
+  formatRate,
+  formatRateCompact,
+  limitsCapacity,
+} from "@/lib/simulation/capacity";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import { cn } from "@/lib/utils";
 import { useTopologyStore } from "../../_store/topology-provider";
 
 const buttonClass =
   "flex h-7 min-w-7 items-center justify-center rounded-lg px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground";
-
-function compact(value: number) {
-  return value >= 1000 ? `${value / 1000}k` : String(value);
-}
 
 function Divider() {
   return <div className="mx-1 h-4 w-px bg-border" />;
@@ -65,15 +68,16 @@ function NodeActions({ id }: { id: string }) {
   const detailsOpen = useTopologyStore((s) => s.detailsOpen);
   const duplicateNode = useTopologyStore((s) => s.duplicateNode);
   const deleteNode = useTopologyStore((s) => s.deleteNode);
-  const updateNodeCapacity = useTopologyStore((s) => s.updateNodeCapacity);
+  const updateNodeConfig = useTopologyStore((s) => s.updateNodeConfig);
   const openDetails = useTopologyStore((s) => s.openDetails);
 
   if (!node) return null;
 
   const isComponent = node.type === "component";
-  const capacity = isComponent
-    ? (node.data as TopologyNodeData).capacity
-    : undefined;
+  const data = isComponent ? (node.data as TopologyNodeData) : undefined;
+  const limits = data ? limitsCapacity(data.componentId, data.category) : false;
+  const base = data ? defaultCapacity(data.componentId, data.category) : 0;
+  const current = data?.capacity ?? base;
 
   return (
     <NodeToolbar
@@ -95,16 +99,24 @@ function NodeActions({ id }: { id: string }) {
         {isComponent && (
           <>
             <Divider />
-            {capacityPresets.map(({ label, value }) => (
-              <ToolbarButton
-                key={label}
-                label={`${label}: ${value.toLocaleString("en-US")} req/s`}
-                pressed={capacity === value}
-                onClick={() => updateNodeCapacity(id, value)}>
-                {compact(value)}
-              </ToolbarButton>
-            ))}
-            <Divider />
+            {limits && (
+              <>
+                {capacityTiers(base).map((tier) => (
+                  <ToolbarButton
+                    key={tier.label}
+                    label={`${tier.label}: ${formatRate(tier.value)} req/s`}
+                    pressed={current === tier.value}
+                    onClick={() =>
+                      updateNodeConfig(id, {
+                        capacity: capacityOverride(tier.value, base),
+                      })
+                    }>
+                    {formatRateCompact(tier.value)}
+                  </ToolbarButton>
+                ))}
+                <Divider />
+              </>
+            )}
             <ToolbarButton
               label="Details"
               pressed={detailsOpen}
