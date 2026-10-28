@@ -8,6 +8,8 @@ import {
   type EdgeProps,
 } from "@xyflow/react";
 import type { TopologyEdgeData, TopologyNodeData } from "@/lib/types/topology";
+import { failureTint, strokeWidthFor } from "@/lib/simulation/flow-visuals";
+import { useThrottledSimulation } from "@/app/projects/[id]/_hooks/use-throttled-simulation";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 import { useEdgeRoute } from "./edge-routes";
 
@@ -50,6 +52,9 @@ export function ComponentEdge({
       : undefined;
   });
 
+  const flow =
+    useThrottledSimulation((s) => s.frame?.edges[id] ?? null) ?? null;
+
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data?.label ?? "");
   // Enter and blur can both fire; only the first one counts.
@@ -69,6 +74,14 @@ export function ComponentEdge({
   const edgeColor = sourceCategory
     ? `var(--cat-${sourceCategory})`
     : "var(--border-strong)";
+
+  const tint = flow ? failureTint(flow.flow, flow.failed) : 0;
+  const flowColor =
+    tint > 0
+      ? `color-mix(in oklch, var(--destructive) ${tint}%, ${edgeColor})`
+      : edgeColor;
+  const stroke = selected ? "var(--primary)" : flowColor;
+  const width = strokeWidthFor(flow?.flow ?? 0) + (selected ? 0.5 : 0);
 
   function startEditing() {
     settledRef.current = false;
@@ -96,12 +109,12 @@ export function ComponentEdge({
         markerStart={markerStart}
         markerEnd={markerEnd}
         style={{
-          stroke: selected ? "var(--primary)" : edgeColor,
-          strokeWidth: selected ? 2 : 1.5,
+          stroke,
+          strokeWidth: width,
           strokeDasharray: isAsync ? "6 4" : undefined,
-          filter: `drop-shadow(0 0 ${selected ? 4 : 2.5}px color-mix(in oklch, ${
-            selected ? "var(--primary)" : edgeColor
-          } ${selected ? 65 : 45}%, transparent))`,
+          filter: `drop-shadow(0 0 ${selected ? 4 : 2.5}px color-mix(in oklch, ${stroke} ${
+            selected ? 65 : 45
+          }%, transparent))`,
         }}
       />
       <EdgeLabelRenderer>
