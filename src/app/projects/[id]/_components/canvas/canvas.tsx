@@ -24,6 +24,7 @@ import { GroupNode } from "@/components/nodes/group-node";
 import { NoteNode } from "@/components/nodes/note-node";
 import { ComponentEdge } from "@/components/edges/component-edge";
 import { ConnectionLine } from "@/components/edges/connection-line";
+import { EdgeGeometryProvider } from "@/components/edges/edge-geometry";
 import { EdgeRoutesProvider } from "@/components/edges/edge-routes";
 import { isConnectionValid } from "@/lib/topology-validation";
 import {
@@ -41,6 +42,7 @@ import {
   CanvasContextMenu,
   type ContextMenuTarget,
 } from "./canvas-context-menu";
+import { ParticleLayer } from "./particle-layer";
 import { SelectionToolbar } from "./selection-toolbar";
 
 // Matches the 24px dots drawn by the canvas background.
@@ -235,69 +237,73 @@ export function Canvas() {
   return (
     <div className="h-full w-full bg-background">
       <EdgeRoutesProvider>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          connectionLineComponent={ConnectionLine}
-          nodesDraggable={!readOnly}
-          nodesConnectable={!readOnly}
-          edgesReconnectable={!readOnly}
-          elementsSelectable={!readOnly}
-          snapToGrid={snapToGrid}
-          snapGrid={SNAP_GRID}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          isValidConnection={isValidConnection}
-          onReconnect={onEdgeUpdate}
-          onReconnectStart={onEdgeUpdateStart}
-          onReconnectEnd={onEdgeUpdateEnd}
-          onNodeDragStart={beginDragCheckpoint}
-          onNodeDragStop={onNodeDragStop}
-          onSelectionDragStart={beginDragCheckpoint}
-          onSelectionDragStop={onSelectionDragStop}
-          onSelectionChange={onSelectionChange}
-          onNodeContextMenu={readOnly ? undefined : onNodeContextMenu}
-          onEdgeContextMenu={readOnly ? undefined : onEdgeContextMenu}
-          deleteKeyCode={null}
-          onNodeClick={(_, node) => selectNode(node.id)}
-          onEdgeClick={(_, edge) => selectEdge(edge.id)}
-          onPaneClick={() => {
-            selectNode(null);
-            selectEdge(null);
-          }}
-          fitView
-          fitViewOptions={{ maxZoom: 1, padding: 0.4 }}
-          connectionMode={ConnectionMode.Loose}>
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={24}
-            size={1.75}
-            color="color-mix(in oklch, var(--foreground) 30%, transparent)"
-          />
-          {showMiniMap && (
-            <MiniMap
-              position="bottom-left"
-              className="border border-border! bg-card!"
-              maskColor="rgba(0,0,0,0.5)"
-              nodeColor={(node) => {
-                if (node.type === "group-container") return "transparent";
-                const category = (node.data as { category?: string }).category;
-                return category
-                  ? `var(--cat-${category})`
-                  : "var(--muted-foreground)";
-              }}
-              nodeStrokeColor="var(--border)"
-              nodeStrokeWidth={2}
-              pannable
-              zoomable
+        <EdgeGeometryProvider>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            connectionLineComponent={ConnectionLine}
+            nodesDraggable={!readOnly}
+            nodesConnectable={!readOnly}
+            edgesReconnectable={!readOnly}
+            elementsSelectable={!readOnly}
+            snapToGrid={snapToGrid}
+            snapGrid={SNAP_GRID}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            isValidConnection={isValidConnection}
+            onReconnect={onEdgeUpdate}
+            onReconnectStart={onEdgeUpdateStart}
+            onReconnectEnd={onEdgeUpdateEnd}
+            onNodeDragStart={beginDragCheckpoint}
+            onNodeDragStop={onNodeDragStop}
+            onSelectionDragStart={beginDragCheckpoint}
+            onSelectionDragStop={onSelectionDragStop}
+            onSelectionChange={onSelectionChange}
+            onNodeContextMenu={readOnly ? undefined : onNodeContextMenu}
+            onEdgeContextMenu={readOnly ? undefined : onEdgeContextMenu}
+            deleteKeyCode={null}
+            onNodeClick={(_, node) => selectNode(node.id)}
+            onEdgeClick={(_, edge) => selectEdge(edge.id)}
+            onPaneClick={() => {
+              selectNode(null);
+              selectEdge(null);
+            }}
+            fitView
+            fitViewOptions={{ maxZoom: 1, padding: 0.4 }}
+            connectionMode={ConnectionMode.Loose}>
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={24}
+              size={1.75}
+              color="color-mix(in oklch, var(--foreground) 30%, transparent)"
             />
-          )}
-          <AlignmentGuides guides={guides} />
-          {!readOnly && <SelectionToolbar />}
-        </ReactFlow>
+            {showMiniMap && (
+              <MiniMap
+                position="bottom-left"
+                className="border border-border! bg-card!"
+                maskColor="rgba(0,0,0,0.5)"
+                nodeColor={(node) => {
+                  if (node.type === "group-container") return "transparent";
+                  const category = (node.data as { category?: string })
+                    .category;
+                  return category
+                    ? `var(--cat-${category})`
+                    : "var(--muted-foreground)";
+                }}
+                nodeStrokeColor="var(--border)"
+                nodeStrokeWidth={2}
+                pannable
+                zoomable
+              />
+            )}
+            <AlignmentGuides guides={guides} />
+            <ParticleLayer />
+            {!readOnly && <SelectionToolbar />}
+          </ReactFlow>
+        </EdgeGeometryProvider>
       </EdgeRoutesProvider>
       <CanvasContextMenu target={contextMenu} onClose={closeContextMenu} />
     </div>
