@@ -4,6 +4,7 @@ import { ActionsIsland } from "./islands/actions-island";
 import { CanvasDock } from "./islands/canvas-dock";
 import { ProjectIsland } from "./islands/project-island";
 import { RunControls } from "./islands/run-controls";
+import { RunSummary } from "./islands/run-summary";
 import { ZoomControls } from "./islands/zoom-controls";
 import { HistoryDialog } from "./panels/history-dialog";
 import { NodeSearch } from "./panels/node-search";
@@ -55,6 +56,7 @@ function WorkspaceLayout({
         <ProjectIsland projectId={projectId} projectName={projectName} />
         <ActionsIsland user={user} />
         <RunControls />
+        <RunSummary />
         <StatsChip />
         <CanvasDock userTemplates={userTemplates} />
         <ZoomControls />
