@@ -8,10 +8,58 @@ import {
   getCategoryDef,
   getAnnotation,
 } from "@/lib/catalog/components";
+import { formatRate, formatRateCompact } from "@/lib/simulation/capacity";
+import { presetFor } from "@/lib/simulation/catalog-presets";
+import { PRESETS } from "@/lib/simulation/presets";
+import type { NodeFrame } from "@/lib/simulation/types";
+import { useThrottledSimulation } from "@/app/projects/[id]/_hooks/use-throttled-simulation";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
 
 type ComponentNodeType = Node<TopologyNodeData, "component">;
+
+const DROP_THRESHOLD = 0.5;
+
+function toneFor(frame: NodeFrame) {
+  if (frame.dropped >= DROP_THRESHOLD || frame.utilization >= 0.95) {
+    return "bg-destructive";
+  }
+  return frame.utilization >= 0.7 ? "bg-amber-500" : "bg-ok";
+}
+
+function formatLag(seconds: number) {
+  return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`;
+}
+
+function Gauge({ frame, isQueue }: { frame: NodeFrame; isQueue: boolean }) {
+  const percent = Math.round(frame.utilization * 100);
+  const dropping = frame.dropped >= DROP_THRESHOLD;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="h-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-[width] duration-100 ${toneFor(frame)}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <div className="flex justify-between font-mono text-[11px] text-muted-foreground">
+        <span>{percent}%</span>
+        {dropping && (
+          <span className="text-destructive">
+            drop {formatRateCompact(frame.dropped)}/s
+          </span>
+        )}
+      </div>
+      {isQueue && (
+        <div className="flex justify-between font-mono text-[11px] text-muted-foreground">
+          <span>{formatRateCompact(frame.queue)} queued</span>
+          <span>lag {formatLag(frame.lagSeconds)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ComponentNode({
   id,
@@ -25,6 +73,15 @@ export function ComponentNode({
     : categoryDef.defaultAnnotation;
   const isCapsule = categoryDef.shape === "capsule";
   const catColor = `var(--cat-${data.category})`;
+
+  const preset = PRESETS[presetFor(data.componentId, data.category)];
+  const limitsLoad = Number.isFinite(preset.capacity);
+  const instances = data.instances ?? 1;
+  const perInstance = data.capacity ?? preset.capacity;
+
+  const frame =
+    useThrottledSimulation((s) => s.frame?.nodes[id] ?? null) ?? null;
+  const dropping = frame !== null && frame.dropped >= DROP_THRESHOLD;
 
   const renameNode = useTopologyStore((s) => s.renameNode);
   const readOnly = useTopologyStore((s) => s.readOnly);
@@ -72,7 +129,9 @@ export function ComponentNode({
         border: `2px solid ${catColor}`,
         boxShadow: selected
           ? "0 0 0 3px color-mix(in oklch, var(--primary) 45%, transparent)"
-          : undefined,
+          : dropping
+            ? "0 0 0 3px color-mix(in oklch, var(--destructive) 40%, transparent)"
+            : undefined,
         width: isCapsule ? undefined : 160,
         minWidth: isCapsule ? 110 : undefined,
       }}>
@@ -116,17 +175,30 @@ export function ComponentNode({
         )}
       </div>
 
+      {isCapsule && frame && (
+        <div className="font-mono text-[11px] text-muted-foreground">
+          {formatRateCompact(frame.offered)} req/s
+        </div>
+      )}
+
       {!isCapsule && (
         <>
-          {data.capacity != null && (
+          {limitsLoad && (
             <div className="flex justify-between font-mono text-[11px] text-muted-foreground">
               <span>cap</span>
-              <span>{data.capacity}</span>
+              <span>
+                {instances > 1
+                  ? `${instances} × ${formatRate(perInstance)}`
+                  : formatRate(perInstance)}
+              </span>
             </div>
           )}
           <div className="truncate text-[11px] text-muted-foreground italic">
             ({annotation})
           </div>
+          {limitsLoad && frame && (
+            <Gauge frame={frame} isQueue={preset.role === "queue"} />
+          )}
         </>
       )}
 
