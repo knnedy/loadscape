@@ -22,6 +22,10 @@ function isComponentData(
   );
 }
 
+function numberOrUndefined(value: unknown): number | undefined {
+  return typeof value === "number" ? value : undefined;
+}
+
 function toNodeInput(id: string, data: TopologyNodeData): NodeInput {
   return {
     id,
@@ -62,7 +66,9 @@ export function fromTopology(
       source: edge.source,
       target: edge.target,
       mode: edge.data?.style === "async" ? "async" : "sync",
-      share: typeof edge.data?.share === "number" ? edge.data.share : undefined,
+      share: numberOrUndefined(edge.data?.share),
+      retries: numberOrUndefined(edge.data?.retries),
+      backoffMs: numberOrUndefined(edge.data?.backoffMs),
     });
   }
 
