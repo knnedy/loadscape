@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { failureTint, strokeWidthFor } from "./flow-visuals";
+import { failureTint, failureTints, strokeWidthFor } from "./flow-visuals";
 
 describe("strokeWidthFor", () => {
   it("keeps the base width when there is no flow", () => {
@@ -47,5 +47,27 @@ describe("failureTint", () => {
   it("caps at 100", () => {
     expect(failureTint(100, 100)).toBe(100);
     expect(failureTint(100, 200)).toBe(100);
+  });
+});
+
+describe("failureTints", () => {
+  it("shows the edge into the failing node as rejected only", () => {
+    expect(failureTints(100, 60, 60)).toEqual({ rejected: 90, downstream: 0 });
+  });
+
+  it("shows an upstream edge as downstream failure only", () => {
+    expect(failureTints(100, 60, 0)).toEqual({ rejected: 0, downstream: 90 });
+  });
+
+  it("splits a mix of both", () => {
+    expect(failureTints(100, 60, 20)).toEqual({ rejected: 30, downstream: 60 });
+  });
+
+  it("shows nothing for a healthy edge", () => {
+    expect(failureTints(100, 0, 0)).toEqual({ rejected: 0, downstream: 0 });
+  });
+
+  it("never lets rejected exceed failed", () => {
+    expect(failureTints(100, 20, 80)).toEqual({ rejected: 30, downstream: 0 });
   });
 });
