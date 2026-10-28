@@ -23,6 +23,16 @@ export interface SimEdge {
   target: string;
   mode: EdgeMode;
   share: number;
+  retries: number;
+  backoffMs: number;
+}
+
+// Failed attempts waiting to re-enter their edge's target. `attempt` is the
+// retry number, from 1, and `volume` is requests, not a rate.
+export interface RetryEntry {
+  due: number;
+  attempt: number;
+  volume: number;
 }
 
 export interface SimGraph {
@@ -33,6 +43,7 @@ export interface SimGraph {
 export interface SimState {
   tick: number;
   queues: Record<string, number>;
+  retries: Record<string, RetryEntry[]>;
 }
 
 export interface NodeFrame {
@@ -46,11 +57,13 @@ export interface NodeFrame {
   lagSeconds: number;
 }
 
-// `failed` counts every request on the edge that ends in failure anywhere
-// downstream. `rejected` is the part refused by the target itself, through
-// drops or its own failure rate, so it marks where a failure starts.
+// `flow` counts every attempt on the edge, original and retry. `retry` is the
+// retry part of it. `failed` counts every attempt that ends in failure
+// anywhere downstream. `rejected` is the part refused by the target itself,
+// through drops or its own failure rate, so it marks where a failure starts.
 export interface EdgeFrame {
   flow: number;
+  retry: number;
   failed: number;
   rejected: number;
 }
@@ -60,6 +73,7 @@ export interface FrameTotals {
   goodput: number;
   dropped: number;
   lost: number;
+  retries: number;
 }
 
 export interface Frame {
