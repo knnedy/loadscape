@@ -8,12 +8,14 @@ import {
   type EdgeProps,
 } from "@xyflow/react";
 import type { TopologyEdgeData, TopologyNodeData } from "@/lib/types/topology";
-import { failureTint, strokeWidthFor } from "@/lib/simulation/flow-visuals";
+import { failureTints, strokeWidthFor } from "@/lib/simulation/flow-visuals";
 import { useThrottledSimulation } from "@/app/projects/[id]/_hooks/use-throttled-simulation";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 import { useEdgeRoute } from "./edge-routes";
 
 type ComponentEdgeType = Edge<TopologyEdgeData, "component">;
+
+const DOWNSTREAM_FAILURE = "oklch(0.77 0.16 75)";
 
 export function ComponentEdge({
   id,
@@ -75,11 +77,17 @@ export function ComponentEdge({
     ? `var(--cat-${sourceCategory})`
     : "var(--border-strong)";
 
-  const tint = flow ? failureTint(flow.flow, flow.failed) : 0;
-  const flowColor =
-    tint > 0
-      ? `color-mix(in oklch, var(--destructive) ${tint}%, ${edgeColor})`
+  const tints = flow
+    ? failureTints(flow.flow, flow.failed, flow.rejected)
+    : null;
+  const withDownstream =
+    tints && tints.downstream > 0
+      ? `color-mix(in oklch, ${DOWNSTREAM_FAILURE} ${tints.downstream}%, ${edgeColor})`
       : edgeColor;
+  const flowColor =
+    tints && tints.rejected > 0
+      ? `color-mix(in oklch, var(--destructive) ${tints.rejected}%, ${withDownstream})`
+      : withDownstream;
   const stroke = selected ? "var(--primary)" : flowColor;
   const width = strokeWidthFor(flow?.flow ?? 0) + (selected ? 0.5 : 0);
 
