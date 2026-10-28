@@ -1,5 +1,10 @@
 import { componentCatalog } from "@/lib/catalog/components";
-import { sanitizeOverrides, sanitizeShare } from "@/lib/simulation/presets";
+import {
+  sanitizeBackoff,
+  sanitizeOverrides,
+  sanitizeRetries,
+  sanitizeShare,
+} from "@/lib/simulation/presets";
 import type { AppNode, AppEdge } from "../_store/topology-store";
 
 export const TOPOLOGY_FILE_VERSION = 1;
@@ -43,6 +48,27 @@ function sanitizeNodeData(
   const rest = { ...data };
   for (const key of OVERRIDE_KEYS) delete rest[key];
   return { ...rest, ...sanitizeOverrides(data) };
+}
+
+// Edge policy values are handled the same way: invalid ones are dropped so
+// the connection falls back to the defaults, and valid ones are clamped.
+function sanitizeEdgeData(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const { share, retries, backoffMs, ...rest } = data;
+  const policy = {
+    share: sanitizeShare(share),
+    retries: sanitizeRetries(retries),
+    backoffMs: sanitizeBackoff(backoffMs),
+  };
+  return {
+    style: "sync",
+    direction: "forward",
+    ...rest,
+    ...Object.fromEntries(
+      Object.entries(policy).filter(([, value]) => value !== undefined),
+    ),
+  };
 }
 
 export function serializeTopology(nodes: AppNode[], edges: AppEdge[]): string {
@@ -145,20 +171,11 @@ export function validateTopology(raw: unknown): {
     )
     .sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0));
 
-  const edges = (raw.edges as AppEdge[]).map((edge) => {
-    const { share, ...data } = (edge.data ?? {}) as Record<string, unknown>;
-    const cleanShare = sanitizeShare(share);
-    return {
-      ...stripTransient(edge),
-      type: "component",
-      data: {
-        style: "sync",
-        direction: "forward",
-        ...data,
-        ...(cleanShare === undefined ? {} : { share: cleanShare }),
-      },
-    };
-  }) as AppEdge[];
+  const edges = (raw.edges as AppEdge[]).map((edge) => ({
+    ...stripTransient(edge),
+    type: "component",
+    data: sanitizeEdgeData(isRecord(edge.data) ? edge.data : {}),
+  })) as AppEdge[];
 
   return { nodes, edges };
 }
