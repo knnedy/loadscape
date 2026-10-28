@@ -38,6 +38,8 @@ const edgeArb = fc.record({
   to: fc.nat(100),
   mode: fc.constantFrom("sync", "async"),
   sharePercent: fc.integer({ min: 0, max: 100 }),
+  retries: fc.constantFrom(0, 0, 1, 2, 3, 5),
+  backoffMs: fc.integer({ min: 0, max: 2000 }),
 });
 
 const scenarioArb = fc
@@ -82,6 +84,8 @@ const scenarioArb = fc
         target: `n${target}`,
         mode: edge.mode,
         share: edge.sharePercent / 100,
+        retries: edge.retries,
+        backoffMs: edge.backoffMs,
       });
     }
 
@@ -204,5 +208,34 @@ describe("engine invariants", () => {
       }),
       { numRuns: NUM_RUNS },
     );
+  });
+
+  it("6. retries are part of each edge's flow, add up in the totals, and only run where a policy applies", () => {
+    check((graph, frames) => {
+      const roles = new Map(graph.nodes.map((node) => [node.id, node.role]));
+      const inert = new Set(
+        graph.edges
+          .filter(
+            (edge) =>
+              edge.retries === 0 ||
+              edge.mode === "async" ||
+              roles.get(edge.source) === "queue",
+          )
+          .map((edge) => edge.id),
+      );
+
+      for (const frame of frames) {
+        let sum = 0;
+        for (const [id, edge] of Object.entries(frame.edges)) {
+          expectNonNegative(edge.retry);
+          expect(edge.retry).toBeLessThanOrEqual(
+            edge.flow + tolerance(edge.flow),
+          );
+          if (inert.has(id)) expect(edge.retry).toBe(0);
+          sum += edge.retry;
+        }
+        expectClose(frame.totals.retries, sum);
+      }
+    });
   });
 });
