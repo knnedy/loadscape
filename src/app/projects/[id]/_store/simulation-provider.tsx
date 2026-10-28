@@ -42,3 +42,9 @@ export function useSimulationStore<T>(
 export function useSimulationStoreApi(): SimulationStore {
   return useSimulationStoreContext();
 }
+
+// For components that also render outside the workspace, such as the shared
+// viewer, where there is no run to show.
+export function useOptionalSimulationStoreApi(): SimulationStore | null {
+  return useContext(SimulationStoreContext);
+}
