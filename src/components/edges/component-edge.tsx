@@ -8,14 +8,17 @@ import {
   type EdgeProps,
 } from "@xyflow/react";
 import type { TopologyEdgeData, TopologyNodeData } from "@/lib/types/topology";
-import { failureTints, strokeWidthFor } from "@/lib/simulation/flow-visuals";
+import {
+  DOWNSTREAM_FAILURE,
+  failureTints,
+  strokeWidthFor,
+} from "@/lib/simulation/flow-visuals";
 import { useThrottledSimulation } from "@/app/projects/[id]/_hooks/use-throttled-simulation";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
+import { useRegisterEdgeGeometry } from "./edge-geometry";
 import { useEdgeRoute } from "./edge-routes";
 
 type ComponentEdgeType = Edge<TopologyEdgeData, "component">;
-
-const DOWNSTREAM_FAILURE = "oklch(0.77 0.16 75)";
 
 export function ComponentEdge({
   id,
@@ -72,10 +75,13 @@ export function ComponentEdge({
     offset,
   });
 
+  const colorVar = sourceCategory
+    ? `--cat-${sourceCategory}`
+    : "--border-strong";
+  useRegisterEdgeGeometry(id, path, colorVar);
+
   const isAsync = data?.style === "async";
-  const edgeColor = sourceCategory
-    ? `var(--cat-${sourceCategory})`
-    : "var(--border-strong)";
+  const edgeColor = `var(${colorVar})`;
 
   const tints = flow
     ? failureTints(flow.flow, flow.failed, flow.rejected)
