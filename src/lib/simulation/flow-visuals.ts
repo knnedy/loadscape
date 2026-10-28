@@ -4,6 +4,10 @@ const WIDTH_PER_DECADE = 0.75;
 const MIN_TINT_SHARE = 0.02;
 const TINT_GAIN = 1.5;
 
+// Shared by the edge lines and the particle layer, so a failure downstream
+// has the same colour on both.
+export const DOWNSTREAM_FAILURE = "oklch(0.77 0.16 75)";
+
 export interface EdgeTints {
   rejected: number;
   downstream: number;
