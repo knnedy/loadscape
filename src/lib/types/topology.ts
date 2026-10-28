@@ -43,6 +43,8 @@ export interface TopologyEdgeData extends Record<string, unknown> {
   style: EdgeStyle;
   direction: EdgeDirection;
   share?: number;
+  retries?: number;
+  backoffMs?: number;
 }
 
 export type EdgeStyle = "sync" | "async";
