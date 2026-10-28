@@ -201,9 +201,14 @@ export function step(
 
   for (const edge of graph.edges) {
     const flow = (edgeFlow.get(edge.id) ?? 0) / DT;
+    const target = nodes.get(edge.target);
+    const pass = passes.get(edge.target);
+    const accepted =
+      target && pass ? pass.admission * (1 - target.failRate) : 1;
     edgeFrames[edge.id] = {
       flow,
       failed: flow * (1 - (success.get(edge.target) ?? 1)),
+      rejected: flow * (1 - accepted),
     };
   }
 
