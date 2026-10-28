@@ -26,6 +26,8 @@ export interface EdgeInput {
   target: string;
   mode: EdgeMode;
   share?: number;
+  retries?: number;
+  backoffMs?: number;
 }
 
 export interface GraphInput {
@@ -46,6 +48,8 @@ const RANGES = {
   failRate: { min: 0, max: 1 },
   rps: { min: 0, max: MAX_RATE },
   share: { min: 0, max: 1 },
+  retries: { min: 0, max: 5 },
+  backoffMs: { min: 0, max: 5000 },
 } as const;
 
 const NUMERIC_KEYS = [
@@ -57,6 +61,8 @@ const NUMERIC_KEYS = [
   "failRate",
   "rps",
 ] as const;
+
+export const EDGE_DEFAULTS = { share: 1, retries: 0, backoffMs: 100 } as const;
 
 export const PRESETS: Record<PresetKey, Behaviour> = {
   client: {
@@ -149,15 +155,21 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
   },
 };
 
+function bounded(
+  value: unknown,
+  range: { min: number; max: number },
+): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return Math.min(range.max, Math.max(range.min, value));
+}
+
 export function sanitizeOverrides(raw: Record<string, unknown>): NodeOverrides {
   const clean: NodeOverrides = {};
 
   for (const key of NUMERIC_KEYS) {
-    const value = raw[key];
-    if (typeof value !== "number" || !Number.isFinite(value)) continue;
-    const { min, max } = RANGES[key];
-    const bounded = Math.min(max, Math.max(min, value));
-    clean[key] = key === "instances" ? Math.round(bounded) : bounded;
+    const value = bounded(raw[key], RANGES[key]);
+    if (value === undefined) continue;
+    clean[key] = key === "instances" ? Math.round(value) : value;
   }
 
   if (raw.fanout === "all" || raw.fanout === "split") {
@@ -168,9 +180,16 @@ export function sanitizeOverrides(raw: Record<string, unknown>): NodeOverrides {
 }
 
 export function sanitizeShare(value: unknown): number | undefined {
-  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
-  const { min, max } = RANGES.share;
-  return Math.min(max, Math.max(min, value));
+  return bounded(value, RANGES.share);
+}
+
+export function sanitizeRetries(value: unknown): number | undefined {
+  const clamped = bounded(value, RANGES.retries);
+  return clamped === undefined ? undefined : Math.round(clamped);
+}
+
+export function sanitizeBackoff(value: unknown): number | undefined {
+  return bounded(value, RANGES.backoffMs);
 }
 
 export function resolveNode(input: NodeInput): SimNode {
@@ -187,7 +206,9 @@ export function resolveEdge(input: EdgeInput): SimEdge {
     source: input.source,
     target: input.target,
     mode: input.mode === "async" ? "async" : "sync",
-    share: sanitizeShare(input.share) ?? 1,
+    share: sanitizeShare(input.share) ?? EDGE_DEFAULTS.share,
+    retries: sanitizeRetries(input.retries) ?? EDGE_DEFAULTS.retries,
+    backoffMs: sanitizeBackoff(input.backoffMs) ?? EDGE_DEFAULTS.backoffMs,
   };
 }
 
