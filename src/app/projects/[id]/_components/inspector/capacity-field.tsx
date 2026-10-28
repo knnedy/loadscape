@@ -1,16 +1,20 @@
 "use client";
 
-import { Minus, Plus } from "lucide-react";
-import { Label } from "@/components/ui/label";
 import {
   capacityOverride,
   capacityTiers,
   formatRate,
 } from "@/lib/simulation/capacity";
 import { cn } from "@/lib/utils";
-import { NumberInput } from "./number-input";
+import { Callout, Field, Stepper, UnitInput } from "./field-parts";
 
 const MIN_INSTANCES = 1;
+const MAX_INSTANCES = 10_000;
+
+const DEFAULT_CAPACITY_HINT =
+  "Requests per second one copy can handle. Anything beyond this is dropped, or waits if there is a line.";
+const DEFAULT_INSTANCES_HINT =
+  "Identical copies sharing the load. Total capacity is capacity times copies.";
 
 interface CapacityFieldProps {
   idPrefix: string;
@@ -20,6 +24,10 @@ interface CapacityFieldProps {
   capacityOverridden: boolean;
   instances?: number;
   instancesMixed?: boolean;
+  capacityLabel?: string;
+  capacityHint?: string;
+  instancesLabel?: string;
+  instancesHint?: string;
   onCapacityChange: (value: number | undefined) => void;
   onInstancesChange: (value: number | undefined) => void;
 }
@@ -32,6 +40,10 @@ export function CapacityField({
   capacityOverridden,
   instances,
   instancesMixed = false,
+  capacityLabel = "Capacity",
+  capacityHint = DEFAULT_CAPACITY_HINT,
+  instancesLabel = "Copies",
+  instancesHint = DEFAULT_INSTANCES_HINT,
   onCapacityChange,
   onInstancesChange,
 }: CapacityFieldProps) {
@@ -45,13 +57,12 @@ export function CapacityField({
       ? effectiveCapacity * effectiveInstances
       : undefined;
 
+  const resolve = (value: number) =>
+    base === undefined ? value : capacityOverride(value, base);
+
   function setCapacity(next: number | undefined) {
-    const resolved =
-      next === undefined || base === undefined
-        ? next
-        : capacityOverride(next, base);
-    if (!capacityMixed && resolved === capacity) return;
-    onCapacityChange(resolved);
+    if (!capacityMixed && next === capacity) return;
+    onCapacityChange(next);
   }
 
   function setInstances(next: number | undefined) {
@@ -60,109 +71,75 @@ export function CapacityField({
     onInstancesChange(resolved);
   }
 
-  const stepInstances = (delta: number) =>
-    setInstances(Math.max(MIN_INSTANCES, (instances ?? MIN_INSTANCES) + delta));
-
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${idPrefix}-capacity`} className="text-xs">
-          Capacity per instance (req/sec)
-        </Label>
-        <NumberInput
+      <Field
+        id={`${idPrefix}-capacity`}
+        label={capacityLabel}
+        hint={capacityHint}
+        changed={capacityOverridden}
+        onReset={() => onCapacityChange(undefined)}>
+        <UnitInput
           id={`${idPrefix}-capacity`}
           value={capacity}
+          base={base}
+          mixed={capacityMixed}
+          unit="req/s"
           min={1}
-          placeholder={
-            capacityMixed
-              ? "Mixed"
-              : base === undefined
-                ? undefined
-                : formatRate(base)
-          }
-          onCommit={setCapacity}
-          className="font-mono"
+          onChange={setCapacity}
         />
         {tiers.length > 0 && (
-          <div className="mt-1 flex gap-1.5">
-            {tiers.map((tier) => (
-              <button
-                key={tier.label}
-                type="button"
-                onClick={() => setCapacity(tier.value)}
-                className={cn(
-                  "flex flex-1 flex-col items-center rounded-md border px-2 py-1 transition-colors",
-                  !capacityMixed && effectiveCapacity === tier.value
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:bg-accent",
-                )}>
-                <span className="text-xs">{tier.label}</span>
-                <span className="font-mono text-[11px]">
-                  {formatRate(tier.value)}
-                </span>
-              </button>
-            ))}
+          <div className="flex gap-1.5">
+            {tiers.map((tier) => {
+              const active = !capacityMixed && effectiveCapacity === tier.value;
+              return (
+                <button
+                  key={tier.label}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setCapacity(resolve(tier.value))}
+                  className={cn(
+                    "flex flex-1 flex-col items-center rounded-md border px-2 py-1 transition-colors",
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-accent",
+                  )}>
+                  <span className="text-xs">{tier.label}</span>
+                  <span className="font-mono text-[11px]">
+                    {formatRate(tier.value)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
-        {(base !== undefined || capacityOverridden) && (
-          <p className="text-xs text-muted-foreground">
-            {base !== undefined && `Default ${formatRate(base)}`}
-            {capacityOverridden && (
-              <>
-                {base !== undefined && " · "}
-                <button
-                  type="button"
-                  onClick={() => onCapacityChange(undefined)}
-                  className="underline-offset-2 hover:text-foreground hover:underline">
-                  {base !== undefined ? "Reset" : "Reset to defaults"}
-                </button>
-              </>
-            )}
-          </p>
-        )}
-      </div>
+      </Field>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${idPrefix}-instances`} className="text-xs">
-          Instances
-        </Label>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            aria-label="Remove an instance"
-            disabled={
-              !instancesMixed && (instances ?? MIN_INSTANCES) <= MIN_INSTANCES
-            }
-            onClick={() => stepInstances(-1)}
-            className="rounded-md border border-border p-2 text-muted-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40">
-            <Minus size={12} />
-          </button>
-          <NumberInput
-            id={`${idPrefix}-instances`}
-            value={instances}
-            min={MIN_INSTANCES}
-            placeholder={instancesMixed ? "Mixed" : String(MIN_INSTANCES)}
-            onCommit={setInstances}
-            className="text-center font-mono"
-          />
-          <button
-            type="button"
-            aria-label="Add an instance"
-            onClick={() => stepInstances(1)}
-            className="rounded-md border border-border p-2 text-muted-foreground transition-colors hover:bg-accent">
-            <Plus size={12} />
-          </button>
-        </div>
-        {total !== undefined && (
-          <p className="text-xs text-muted-foreground">
-            Total{" "}
-            <span className="font-mono text-foreground">
-              {formatRate(total)}
-            </span>{" "}
-            req/sec
-          </p>
-        )}
-      </div>
+      <Field
+        id={`${idPrefix}-instances`}
+        label={instancesLabel}
+        hint={instancesHint}
+        changed={instancesMixed || instances !== undefined}
+        onReset={() => onInstancesChange(undefined)}>
+        <Stepper
+          id={`${idPrefix}-instances`}
+          value={instancesMixed ? undefined : (instances ?? MIN_INSTANCES)}
+          placeholder={instancesMixed ? "Mixed" : undefined}
+          min={MIN_INSTANCES}
+          max={MAX_INSTANCES}
+          decrementLabel="Remove one"
+          incrementLabel="Add one"
+          onChange={setInstances}
+        />
+      </Field>
+
+      {total !== undefined && (
+        <Callout>
+          Handles up to{" "}
+          <span className="font-mono text-foreground">{formatRate(total)}</span>{" "}
+          requests per second in total.
+        </Callout>
+      )}
     </div>
   );
 }
