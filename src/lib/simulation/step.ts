@@ -2,6 +2,7 @@ import type {
   EdgeFrame,
   Frame,
   NodeFrame,
+  RetryEntry,
   SimEdge,
   SimGraph,
   SimNode,
@@ -11,6 +12,7 @@ import type {
 export const DT = 0.1;
 
 const MIN_HEADROOM = 0.05;
+const MIN_RETRY_VOLUME = 1e-9;
 
 export interface StepResult {
   state: SimState;
@@ -30,7 +32,30 @@ interface Pass {
 }
 
 export function createState(): SimState {
-  return { tick: 0, queues: {} };
+  return { tick: 0, queues: {}, retries: {} };
+}
+
+// Each retry waits twice as long as the one before it, and never less than
+// one tick.
+export function retryDelayTicks(backoffMs: number, attempt: number): number {
+  return Math.max(
+    1,
+    Math.round((backoffMs * 2 ** (attempt - 1)) / (DT * 1000)),
+  );
+}
+
+function schedule(
+  list: RetryEntry[],
+  due: number,
+  attempt: number,
+  volume: number,
+) {
+  if (!(volume > MIN_RETRY_VOLUME)) return;
+  const existing = list.find(
+    (entry) => entry.due === due && entry.attempt === attempt,
+  );
+  if (existing) existing.volume += volume;
+  else list.push({ due, attempt, volume });
 }
 
 export function step(
@@ -40,6 +65,7 @@ export function step(
   loadFactor: number,
 ): StepResult {
   const factor = Math.max(0, loadFactor);
+  const nextTick = state.tick + 1;
   const nodes = new Map<string, SimNode>();
   const outgoing = new Map<string, SimEdge[]>();
 
@@ -53,11 +79,32 @@ export function step(
 
   const isAsync = (edge: SimEdge) =>
     edge.mode === "async" || nodes.get(edge.source)?.role === "queue";
+  const retried = (edge: SimEdge) => edge.retries > 0 && !isAsync(edge);
 
   const inflow = new Map<string, number>();
   const asyncInflow = new Map<string, number>();
   const edgeFlow = new Map<string, number>();
+  const retryFlow = new Map<string, number>();
+  const released = new Map<string, RetryEntry[]>();
+  const waiting = new Map<string, RetryEntry[]>();
   const passes = new Map<string, Pass>();
+
+  // Retries due this tick come out of per-edge state, so they are known
+  // before any node is processed. That keeps the pass acyclic.
+  for (const edge of graph.edges) {
+    if (!retried(edge)) continue;
+    const due: RetryEntry[] = [];
+    const rest: RetryEntry[] = [];
+    for (const entry of state.retries[edge.id] ?? []) {
+      if (entry.due <= nextTick) due.push(entry);
+      else rest.push({ ...entry });
+    }
+    const volume = due.reduce((sum, entry) => sum + entry.volume, 0);
+    released.set(edge.id, due);
+    waiting.set(edge.id, rest);
+    retryFlow.set(edge.id, volume);
+    inflow.set(edge.target, (inflow.get(edge.target) ?? 0) + volume);
+  }
 
   for (const id of order) {
     const node = nodes.get(id);
@@ -115,6 +162,12 @@ export function step(
   const success = new Map<string, number>();
   const latency = new Map<string, number>();
 
+  // A call that may be retried succeeds if any of its attempts does.
+  const attemptSuccess = (edge: SimEdge) => {
+    const single = success.get(edge.target) ?? 1;
+    return edge.retries > 0 ? 1 - (1 - single) ** (1 + edge.retries) : single;
+  };
+
   for (let i = order.length - 1; i >= 0; i--) {
     const id = order[i];
     const node = nodes.get(id);
@@ -134,7 +187,7 @@ export function step(
           if (isAsync(edge)) {
             calls += portion;
           } else {
-            calls += portion * (success.get(edge.target) ?? 1);
+            calls += portion * attemptSuccess(edge);
             callMs += portion * (latency.get(edge.target) ?? 0);
           }
         }
@@ -142,7 +195,7 @@ export function step(
     } else {
       for (const edge of edges) {
         if (isAsync(edge)) continue;
-        calls *= 1 - edge.share + edge.share * (success.get(edge.target) ?? 1);
+        calls *= 1 - edge.share + edge.share * attemptSuccess(edge);
         if (edge.share > 0) {
           callMs = Math.max(callMs, latency.get(edge.target) ?? 0);
         }
@@ -166,10 +219,12 @@ export function step(
   const nodeFrames: Record<string, NodeFrame> = {};
   const edgeFrames: Record<string, EdgeFrame> = {};
   const queues: Record<string, number> = {};
+  const retries: Record<string, RetryEntry[]> = {};
   let generated = 0;
   let goodput = 0;
   let dropped = 0;
   let lost = 0;
+  let retrying = 0;
 
   for (const id of order) {
     const node = nodes.get(id);
@@ -200,27 +255,53 @@ export function step(
   }
 
   for (const edge of graph.edges) {
-    const flow = (edgeFlow.get(edge.id) ?? 0) / DT;
+    const original = edgeFlow.get(edge.id) ?? 0;
+    const retry = retryFlow.get(edge.id) ?? 0;
+    const flow = (original + retry) / DT;
     const target = nodes.get(edge.target);
     const pass = passes.get(edge.target);
     const accepted =
       target && pass ? pass.admission * (1 - target.failRate) : 1;
+    const failShare = 1 - (success.get(edge.target) ?? 1);
+
     edgeFrames[edge.id] = {
       flow,
-      failed: flow * (1 - (success.get(edge.target) ?? 1)),
+      retry: retry / DT,
+      failed: flow * failShare,
       rejected: flow * (1 - accepted),
     };
+    retrying += retry / DT;
+
+    // Attempts that failed this tick come back after their backoff, until
+    // the edge's retries are used up.
+    const pending = waiting.get(edge.id);
+    if (!pending) continue;
+    schedule(
+      pending,
+      nextTick + retryDelayTicks(edge.backoffMs, 1),
+      1,
+      original * failShare,
+    );
+    for (const entry of released.get(edge.id) ?? []) {
+      if (entry.attempt >= edge.retries) continue;
+      const attempt = entry.attempt + 1;
+      schedule(
+        pending,
+        nextTick + retryDelayTicks(edge.backoffMs, attempt),
+        attempt,
+        entry.volume * failShare,
+      );
+    }
+    if (pending.length > 0) retries[edge.id] = pending;
   }
 
-  const tick = state.tick + 1;
-
   return {
-    state: { tick, queues },
+    state: { tick: nextTick, queues, retries },
     frame: {
-      t: tick * DT,
+      t: nextTick * DT,
       nodes: nodeFrames,
       edges: edgeFrames,
-      totals: { generated, goodput, dropped, lost },
+      totals: { generated, goodput, dropped, lost, retries: retrying },
     },
   };
 }
