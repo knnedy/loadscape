@@ -16,6 +16,27 @@ import type {
 import type { TopologyTemporal } from "../temporal";
 import type { AppEdge, TopologyState } from "../topology-store";
 
+export type EdgeRetryPatch = Partial<
+  Pick<TopologyEdgeData, "retries" | "backoffMs">
+>;
+
+type EdgeConfigPatch = EdgeRetryPatch &
+  Partial<Pick<TopologyEdgeData, "share">>;
+
+// An undefined value removes the key, so stored data keeps only the values
+// a user changed and every other connection uses the defaults.
+function withEdgeConfig(
+  data: TopologyEdgeData,
+  patch: EdgeConfigPatch,
+): TopologyEdgeData {
+  const next: Record<string, unknown> = { ...data };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) delete next[key];
+    else next[key] = value;
+  }
+  return next as TopologyEdgeData;
+}
+
 export function markersForDirection(direction: EdgeDirection) {
   const arrow = { type: MarkerType.ArrowClosed };
   return {
@@ -40,6 +61,7 @@ export interface EdgesSlice {
   updateEdgeStyle: (id: string, style: EdgeStyle) => void;
   updateEdgeDirection: (id: string, direction: EdgeDirection) => void;
   updateEdgeShare: (id: string, share: number | undefined) => void;
+  updateEdgeRetry: (id: string, patch: EdgeRetryPatch) => void;
   updateSelectedEdges: (patch: {
     style?: EdgeStyle;
     direction?: EdgeDirection;
@@ -103,18 +125,17 @@ export const createEdgesSlice =
             : e,
         ),
       }),
-    // An undefined share removes the key, so stored data keeps only a
-    // share the user changed and every other edge uses the default of 1.
     updateEdgeShare: (id, share) =>
       set({
-        edges: get().edges.map((e) => {
-          if (e.id !== id) return e;
-          const { share: _previous, ...rest } = e.data!;
-          return {
-            ...e,
-            data: share === undefined ? rest : { ...rest, share },
-          } as AppEdge;
-        }),
+        edges: get().edges.map((e) =>
+          e.id === id ? { ...e, data: withEdgeConfig(e.data!, { share }) } : e,
+        ),
+      }),
+    updateEdgeRetry: (id, patch) =>
+      set({
+        edges: get().edges.map((e) =>
+          e.id === id ? { ...e, data: withEdgeConfig(e.data!, patch) } : e,
+        ),
       }),
     updateSelectedEdges: (patch) =>
       set({
