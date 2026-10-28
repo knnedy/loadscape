@@ -46,9 +46,13 @@ export interface NodeFrame {
   lagSeconds: number;
 }
 
+// `failed` counts every request on the edge that ends in failure anywhere
+// downstream. `rejected` is the part refused by the target itself, through
+// drops or its own failure rate, so it marks where a failure starts.
 export interface EdgeFrame {
   flow: number;
   failed: number;
+  rejected: number;
 }
 
 export interface FrameTotals {
