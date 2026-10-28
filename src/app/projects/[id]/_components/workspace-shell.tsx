@@ -12,8 +12,11 @@ import { Canvas } from "./canvas/canvas";
 import { ConfigPanel } from "./inspector/config-panel";
 import { EmptyState } from "./canvas/empty-state";
 import { StatsChip } from "./islands/stats-chip";
+import { SimulationProvider } from "../_store/simulation-provider";
 import { TopologyProvider } from "../_store/topology-provider";
 import { useGlobalShortcuts } from "../_hooks/use-global-shortcuts";
+import { useSimulationLoop } from "../_hooks/use-simulation-loop";
+import { useSimulationSync } from "../_hooks/use-simulation-sync";
 import { ReactFlowProvider } from "@xyflow/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { AppUser } from "../../_components/user-menu";
@@ -40,6 +43,8 @@ function WorkspaceLayout({
   shareToken = null,
 }: Omit<WorkspaceShellProps, "initialTopology">) {
   useGlobalShortcuts();
+  useSimulationSync();
+  useSimulationLoop();
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -68,9 +73,11 @@ export function WorkspaceShell({
   return (
     <TooltipProvider delay={200}>
       <TopologyProvider initialTopology={initialTopology}>
-        <ReactFlowProvider>
-          <WorkspaceLayout {...layoutProps} />
-        </ReactFlowProvider>
+        <SimulationProvider>
+          <ReactFlowProvider>
+            <WorkspaceLayout {...layoutProps} />
+          </ReactFlowProvider>
+        </SimulationProvider>
       </TopologyProvider>
     </TooltipProvider>
   );
