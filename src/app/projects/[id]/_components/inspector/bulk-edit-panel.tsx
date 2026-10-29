@@ -1,28 +1,54 @@
 "use client";
 
 import { useMemo } from "react";
-import { Label } from "@/components/ui/label";
 import { defaultCapacity, limitsCapacity } from "@/lib/simulation/capacity";
-import type { TopologyNodeData } from "@/lib/types/topology";
-import { cn } from "@/lib/utils";
+import type {
+  EdgeDirection,
+  EdgeStyle,
+  TopologyNodeData,
+} from "@/lib/types/topology";
 import { useTopologyStore } from "../../_store/topology-provider";
 import { CapacityField } from "./capacity-field";
+import { Callout, Section, Segmented, type SegmentOption } from "./field-parts";
 
-const EDGE_STYLES = ["sync", "async"] as const;
-const EDGE_DIRECTIONS = ["forward", "bidirectional", "none"] as const;
+const STYLE_OPTIONS: SegmentOption<EdgeStyle>[] = [
+  {
+    value: "sync",
+    label: "Sync",
+    description:
+      "The caller waits for the answer, so a failure at the target fails the caller's request too.",
+  },
+  {
+    value: "async",
+    label: "Async",
+    description:
+      "The caller sends and moves on. Requests the target drops are lost silently.",
+  },
+];
+
+const DIRECTION_OPTIONS: SegmentOption<EdgeDirection>[] = [
+  {
+    value: "forward",
+    label: "Forward",
+    description:
+      "Arrow points at the target. Drawing only: it does not change how traffic flows.",
+  },
+  {
+    value: "bidirectional",
+    label: "Both ways",
+    description:
+      "Arrows at both ends. Drawing only: requests still flow from source to target.",
+  },
+  {
+    value: "none",
+    label: "No arrow",
+    description:
+      "No arrows. Drawing only: requests still flow from source to target.",
+  },
+];
 
 function plural(count: number, word: string) {
   return `${count} ${count === 1 ? word : `${word}s`}`;
-}
-
-function segmentClass(active: boolean, small = false) {
-  return cn(
-    "flex-1 rounded-md border px-2 py-1 capitalize transition-colors",
-    small ? "text-[11px]" : "text-xs",
-    active
-      ? "border-primary bg-primary/10 text-primary"
-      : "border-border text-muted-foreground hover:bg-accent",
-  );
 }
 
 function common<T>(values: T[]): { value: T | undefined; mixed: boolean } {
@@ -76,21 +102,21 @@ export function BulkEditPanel() {
   );
   const base = defaults.mixed ? undefined : defaults.value;
 
-  const styles = new Set(selectedEdges.map((e) => e.data?.style));
-  const directions = new Set(selectedEdges.map((e) => e.data?.direction));
-  const commonStyle = styles.size === 1 ? [...styles][0] : undefined;
-  const commonDirection =
-    directions.size === 1 ? [...directions][0] : undefined;
+  const style = common(selectedEdges.map((e) => e.data?.style));
+  const direction = common(selectedEdges.map((e) => e.data?.direction));
 
   return (
     <aside className="w-70 shrink-0 overflow-y-auto border-l border-border bg-card p-4">
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
         {total} selected
       </span>
-      <p className="mt-2 text-sm text-muted-foreground">{summary}</p>
+      <p className="mt-2 text-sm text-foreground">{summary}</p>
+      <p className="mt-1 text-xs leading-snug text-muted-foreground">
+        Changes here apply to everything selected, in one step you can undo.
+      </p>
 
       {components.length > 0 && (
-        <div className="mt-5 flex flex-col gap-2">
+        <Section title="Load">
           {limiting.length > 0 ? (
             <>
               <CapacityField
@@ -111,10 +137,10 @@ export function BulkEditPanel() {
                 }
               />
               {base === undefined && (
-                <p className="text-xs text-muted-foreground">
-                  These components have different defaults, so a value here
-                  replaces all of them.
-                </p>
+                <Callout>
+                  These components have different defaults, so a capacity typed
+                  here replaces all of them.
+                </Callout>
               )}
               <p className="text-xs text-muted-foreground">
                 {limiting.length === components.length
@@ -123,53 +149,53 @@ export function BulkEditPanel() {
               </p>
             </>
           ) : (
-            <p className="text-xs text-muted-foreground">
+            <Callout>
               None of the selected components limit load, so there is no
               capacity to edit.
-            </p>
+            </Callout>
           )}
-        </div>
+        </Section>
       )}
 
       {selectedEdges.length > 0 && (
         <>
-          <div className="mt-5 flex flex-col gap-1.5">
-            <Label className="text-xs">Style</Label>
-            <div className="flex gap-1.5">
-              {EDGE_STYLES.map((style) => (
-                <button
-                  key={style}
-                  onClick={() => updateSelectedEdges({ style })}
-                  className={segmentClass(commonStyle === style)}>
-                  {style}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-1.5">
-            <Label className="text-xs">Direction</Label>
-            <div className="flex gap-1.5">
-              {EDGE_DIRECTIONS.map((direction) => (
-                <button
-                  key={direction}
-                  onClick={() => updateSelectedEdges({ direction })}
-                  className={segmentClass(commonDirection === direction, true)}>
-                  {direction}
-                </button>
-              ))}
-            </div>
+          <Section title="How they are called">
+            <Segmented
+              label="Call style"
+              value={style.value}
+              mixed={style.mixed}
+              options={STYLE_OPTIONS}
+              onChange={(next) => updateSelectedEdges({ style: next })}
+            />
+          </Section>
+          <Section title="Arrows">
+            <Segmented
+              label="Arrow direction"
+              value={direction.value}
+              mixed={direction.mixed}
+              options={DIRECTION_OPTIONS}
+              onChange={(next) => updateSelectedEdges({ direction: next })}
+            />
             <p className="text-xs text-muted-foreground">
               Applies to {plural(selectedEdges.length, "connection")}.
             </p>
+          </Section>
+          <div className="mt-4">
+            <Callout>
+              Retries and traffic share are set one connection at a time. Select
+              a single connection to change them.
+            </Callout>
           </div>
         </>
       )}
 
       {components.length === 0 && selectedEdges.length === 0 && (
-        <p className="mt-5 text-xs text-muted-foreground">
-          Select components or connections to edit them together.
-        </p>
+        <div className="mt-5">
+          <Callout>
+            Select components or connections to edit them together. Groups and
+            notes have no settings to share.
+          </Callout>
+        </div>
       )}
     </aside>
   );
