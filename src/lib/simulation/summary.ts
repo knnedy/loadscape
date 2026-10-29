@@ -5,12 +5,14 @@ const REFUSAL_FLOOR = 0.5;
 const SATURATED = 0.95;
 const NEAR_LIMIT = 0.85;
 const MIN_REFUSED_VOLUME = 1;
+const MIN_RETRIED_VOLUME = 1;
 const FULL_MARGIN = 1e-6;
 
 export interface NodeSummary {
   id: string;
   isQueue: boolean;
   refused: number;
+  refusedRetries: number;
   firstRefusedAt: number | null;
   peakUtilization: number;
   saturatedSeconds: number;
@@ -19,17 +21,27 @@ export interface NodeSummary {
   fullAt: number | null;
 }
 
+export interface EdgeRetrySummary {
+  id: string;
+  source: string;
+  target: string;
+  retried: number;
+  peakRate: number;
+}
+
 export interface RunSummary {
   seconds: number;
   generated: number;
   succeeded: number;
   dropped: number;
   lost: number;
+  retried: number;
   successRate: number;
   averageGoodput: number;
   minGoodput: number;
   firstFailureAt: number | null;
   nodes: NodeSummary[];
+  retryEdges: EdgeRetrySummary[];
   bottleneck: { id: string; kind: "refusing" | "near-limit" } | null;
 }
 
@@ -48,6 +60,7 @@ export function summarizeRun(
       id: node.id,
       isQueue: node.role === "queue",
       refused: 0,
+      refusedRetries: 0,
       firstRefusedAt: null,
       peakUtilization: 0,
       saturatedSeconds: 0,
@@ -57,12 +70,24 @@ export function summarizeRun(
     });
     buffers.set(node.id, node.buffer);
   }
-  const targetOf = new Map(graph.edges.map((edge) => [edge.id, edge.target]));
+  const edges = new Map<string, EdgeRetrySummary>(
+    graph.edges.map((edge) => [
+      edge.id,
+      {
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        retried: 0,
+        peakRate: 0,
+      },
+    ]),
+  );
 
   let generated = 0;
   let succeeded = 0;
   let dropped = 0;
   let lost = 0;
+  let retried = 0;
   let minGoodput = Infinity;
   let firstFailureAt: number | null = null;
 
@@ -74,6 +99,7 @@ export function summarizeRun(
     succeeded += totals.goodput;
     dropped += totals.dropped;
     lost += totals.lost;
+    retried += totals.retries;
     minGoodput = Math.min(minGoodput, totals.goodput);
     if (
       firstFailureAt === null &&
@@ -104,10 +130,19 @@ export function summarizeRun(
     }
 
     for (const [id, edgeFrame] of Object.entries(frame.edges)) {
-      const target = targetOf.get(id);
-      const node = target ? nodes.get(target) : undefined;
+      const edge = edges.get(id);
+      if (!edge) continue;
+
+      edge.retried += edgeFrame.retry;
+      edge.peakRate = Math.max(edge.peakRate, edgeFrame.retry);
+
+      const node = nodes.get(edge.target);
       if (!node) continue;
       node.refused += edgeFrame.rejected;
+      // A refusal hits original attempts and retries in proportion.
+      const retryShare =
+        edgeFrame.flow > 0 ? Math.min(1, edgeFrame.retry / edgeFrame.flow) : 0;
+      node.refusedRetries += edgeFrame.rejected * retryShare;
       if (node.firstRefusedAt === null && edgeFrame.rejected >= REFUSAL_FLOOR) {
         node.firstRefusedAt = at;
       }
@@ -120,6 +155,10 @@ export function summarizeRun(
       b.peakUtilization - a.peakUtilization ||
       a.id.localeCompare(b.id),
   );
+
+  const retryEdges = [...edges.values()]
+    .filter((edge) => edge.retried >= MIN_RETRIED_VOLUME)
+    .sort((a, b) => b.retried - a.retried || a.id.localeCompare(b.id));
 
   let bottleneck: RunSummary["bottleneck"] = null;
   if (ranked[0] && ranked[0].refused >= MIN_REFUSED_VOLUME) {
@@ -143,11 +182,13 @@ export function summarizeRun(
     succeeded,
     dropped,
     lost,
+    retried,
     successRate: generated > 0 ? succeeded / generated : 1,
     averageGoodput: succeeded / history.length,
     minGoodput,
     firstFailureAt,
     nodes: ranked,
+    retryEdges,
     bottleneck,
   };
 }
