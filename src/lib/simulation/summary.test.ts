@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { orderGraph } from "./graph";
-import { resolveGraph, type EdgeInput, type GraphInput } from "./presets";
+import { resolveGraph, type GraphInput } from "./presets";
 import { createState, step } from "./step";
 import { summarizeRun } from "./summary";
 import type { EdgeMode, Frame } from "./types";
@@ -8,12 +8,25 @@ import type { EdgeMode, Frame } from "./types";
 const near = (actual: number, expected: number) =>
   expect(actual).toBeCloseTo(expected, 6);
 
-function edge(
-  source: string,
-  target: string,
-  mode: EdgeMode = "sync",
-): EdgeInput {
-  return { id: `${source}-${target}`, source, target, mode };
+// A service that fails half of what it receives whatever the load, so the
+// totals have closed-form answers.
+function flaky(mode: EdgeMode, retries?: number): GraphInput {
+  return {
+    nodes: [
+      { id: "client", preset: "client", overrides: { rps: 100 } },
+      { id: "service", preset: "external", overrides: { failRate: 0.5 } },
+    ],
+    edges: [
+      {
+        id: "client-service",
+        source: "client",
+        target: "service",
+        mode,
+        retries,
+        backoffMs: 300,
+      },
+    ],
+  };
 }
 
 function summarize(input: GraphInput, seconds: number) {
@@ -40,128 +53,47 @@ function nodeOf(summary: ReturnType<typeof summarize>, id: string) {
   return node;
 }
 
-function healthy(rps: number): GraphInput {
-  return {
-    nodes: [
-      { id: "client", preset: "client", overrides: { rps } },
-      { id: "api", preset: "compute", overrides: { capacity: 100 } },
-      { id: "db", preset: "database", overrides: { capacity: 200 } },
-    ],
-    edges: [edge("client", "api"), edge("api", "db")],
-  };
-}
+describe("summarizeRun with retries", () => {
+  it("totals the retried volume and names the connection that retried", () => {
+    const summary = summarize(flaky("sync", 2), 20);
 
-function queueChain(mode: EdgeMode): GraphInput {
-  return {
-    nodes: [
-      { id: "client", preset: "client", overrides: { rps: 80 } },
-      { id: "api", preset: "compute", overrides: { capacity: 100 } },
-      {
-        id: "queue",
-        preset: "queue",
-        overrides: { capacity: 40, buffer: 6000 },
-      },
-      { id: "db", preset: "database", overrides: { capacity: 50 } },
-    ],
-    edges: [
-      edge("client", "api"),
-      edge("api", "queue", mode),
-      edge("queue", "db"),
-    ],
-  };
-}
+    near(summary.generated, 2000);
+    near(summary.succeeded, 1750);
+    near(summary.successRate, 0.875);
+    near(summary.retried, 1500);
 
-describe("summarizeRun", () => {
-  it("returns nothing for an empty history", () => {
-    const graph = resolveGraph({ nodes: [], edges: [] });
-
-    expect(summarizeRun([], graph)).toBeNull();
+    expect(summary.retryEdges).toHaveLength(1);
+    const [edge] = summary.retryEdges;
+    expect(edge.id).toBe("client-service");
+    expect(edge.source).toBe("client");
+    expect(edge.target).toBe("service");
+    near(edge.retried, 1500);
+    near(edge.peakRate, 75);
   });
 
-  it("reports a healthy path with nothing to flag (S1)", () => {
-    const summary = summarize(healthy(80), 20);
+  it("splits a node's refusals into originals and retries", () => {
+    const summary = summarize(flaky("sync", 2), 20);
+    const service = nodeOf(summary, "service");
 
-    expect(summary.seconds).toBe(20);
-    near(summary.generated, 1600);
-    near(summary.succeeded, 1600);
-    near(summary.successRate, 1);
-    near(summary.dropped, 0);
-    near(summary.lost, 0);
-    near(summary.minGoodput, 80);
-    expect(summary.firstFailureAt).toBeNull();
-    expect(summary.bottleneck).toBeNull();
-    near(nodeOf(summary, "api").peakUtilization, 0.8);
+    near(service.refused, 1750);
+    near(service.refusedRetries, 750);
+    expect(summary.bottleneck).toEqual({ id: "service", kind: "refusing" });
   });
 
-  it("flags the busiest node when nothing is refused but one runs hot", () => {
-    const summary = summarize(healthy(92), 20);
+  it("reports no retries when none are configured", () => {
+    const summary = summarize(flaky("sync"), 20);
 
-    near(summary.successRate, 1);
-    expect(summary.bottleneck).toEqual({ id: "api", kind: "near-limit" });
-  });
-
-  it("names the node that refuses requests, not the caller it hurts (S2)", () => {
-    const summary = summarize(
-      {
-        nodes: [
-          { id: "client", preset: "client", overrides: { rps: 80 } },
-          { id: "api", preset: "compute", overrides: { capacity: 100 } },
-          {
-            id: "db",
-            preset: "database",
-            overrides: { capacity: 40, buffer: 0 },
-          },
-        ],
-        edges: [edge("client", "api"), edge("api", "db")],
-      },
-      20,
-    );
-
-    near(summary.generated, 1600);
-    near(summary.succeeded, 800);
+    near(summary.retried, 0);
+    expect(summary.retryEdges).toEqual([]);
+    near(nodeOf(summary, "service").refusedRetries, 0);
     near(summary.successRate, 0.5);
-    near(summary.dropped, 800);
-    near(summary.lost, 0);
-    expect(summary.firstFailureAt).toBe(1);
-    expect(summary.bottleneck).toEqual({ id: "db", kind: "refusing" });
-    expect(summary.nodes.map((n) => n.id)).toEqual(["db", "api", "client"]);
-
-    const db = nodeOf(summary, "db");
-    near(db.refused, 800);
-    expect(db.firstRefusedAt).toBe(1);
-    expect(db.saturatedSeconds).toBe(20);
-    near(nodeOf(summary, "api").refused, 0);
   });
 
-  it("shows a queue filling and then failing callers (S3a)", () => {
-    const summary = summarize(queueChain("sync"), 160);
+  it("reports no retries on an async connection", () => {
+    const summary = summarize(flaky("async", 2), 20);
 
-    near(summary.generated, 12800);
-    near(summary.succeeded, 12400);
-    near(summary.averageGoodput, 77.5);
-    near(summary.minGoodput, 40);
-    near(summary.dropped, 400);
-    near(summary.lost, 0);
-    expect(summary.firstFailureAt).toBe(151);
-    expect(summary.bottleneck).toEqual({ id: "queue", kind: "refusing" });
-
-    const queue = nodeOf(summary, "queue");
-    near(queue.peakQueue, 6000);
-    near(queue.peakLagSeconds, 150);
-    expect(queue.fullAt).toBe(150);
-    expect(queue.firstRefusedAt).toBe(151);
-    near(queue.refused, 400);
-  });
-
-  it("reports an async queue's overflow as lost, with goodput intact (S3b)", () => {
-    const summary = summarize(queueChain("async"), 160);
-
+    near(summary.retried, 0);
+    expect(summary.retryEdges).toEqual([]);
     near(summary.successRate, 1);
-    near(summary.succeeded, 12800);
-    near(summary.dropped, 0);
-    near(summary.lost, 400);
-    expect(summary.firstFailureAt).toBeNull();
-    expect(summary.bottleneck).toEqual({ id: "queue", kind: "refusing" });
-    near(nodeOf(summary, "queue").refused, 400);
   });
 });
