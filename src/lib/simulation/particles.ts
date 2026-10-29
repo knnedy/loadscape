@@ -3,6 +3,7 @@ export type ParticleKind = "ok" | "downstream" | "rejected";
 export interface Particle {
   distance: number;
   kind: ParticleKind;
+  retry: boolean;
   burst: number | null;
 }
 
@@ -11,11 +12,13 @@ export interface EdgeParticles {
   spawnCarry: number;
   rejectedCarry: number;
   downstreamCarry: number;
+  retryCarry: number;
 }
 
 export interface EdgeDrive {
   length: number;
   flow: number;
+  retry: number;
   failed: number;
   rejected: number;
   queueFill: number;
@@ -71,6 +74,20 @@ export function nextKind(
   return "ok";
 }
 
+// The same diffusion for retries: over any run of spawns, the share of
+// retry particles matches the retry share of the edge's flow.
+export function nextRetry(
+  state: Pick<EdgeParticles, "retryCarry">,
+  retryShare: number,
+): boolean {
+  state.retryCarry += retryShare;
+  if (state.retryCarry >= 1 - EPSILON) {
+    state.retryCarry -= 1;
+    return true;
+  }
+  return false;
+}
+
 const share = (part: number, flow: number) =>
   flow > 0 ? Math.min(1, Math.max(0, part / flow)) : 0;
 
@@ -80,6 +97,7 @@ export function createEdgeParticles(): EdgeParticles {
     spawnCarry: 0,
     rejectedCarry: 0,
     downstreamCarry: 0,
+    retryCarry: 0,
   };
 }
 
@@ -95,6 +113,7 @@ export function advanceEdgeParticles(
     Math.max(0, drive.failed - drive.rejected),
     flow,
   );
+  const retryShare = share(drive.retry, flow);
 
   state.spawnCarry += spawnRate(flow) * seconds;
   while (
@@ -105,6 +124,7 @@ export function advanceEdgeParticles(
     state.particles.push({
       distance: 0,
       kind: nextKind(state, rejectedShare, downstreamShare),
+      retry: nextRetry(state, retryShare),
       burst: null,
     });
   }
