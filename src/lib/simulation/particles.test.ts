@@ -5,6 +5,7 @@ import {
   advanceEdgeParticles,
   createEdgeParticles,
   nextKind,
+  nextRetry,
   speedFactor,
   spawnRate,
   type EdgeDrive,
@@ -13,6 +14,7 @@ import {
 const drive = (overrides: Partial<EdgeDrive> = {}): EdgeDrive => ({
   length: 100,
   flow: 0,
+  retry: 0,
   failed: 0,
   rejected: 0,
   queueFill: 0,
@@ -88,6 +90,27 @@ describe("nextKind", () => {
   });
 });
 
+describe("nextRetry", () => {
+  it("matches the retry share exactly over a long run", () => {
+    const state = { retryCarry: 0 };
+    let retries = 0;
+    for (let i = 0; i < 1000; i++) {
+      if (nextRetry(state, 0.25)) retries++;
+    }
+
+    expect(Math.abs(retries - 250)).toBeLessThanOrEqual(1);
+  });
+
+  it("marks every particle at a share of 1 and none at 0", () => {
+    const all = { retryCarry: 0 };
+    const none = { retryCarry: 0 };
+    for (let i = 0; i < 50; i++) {
+      expect(nextRetry(all, 1)).toBe(true);
+      expect(nextRetry(none, 0)).toBe(false);
+    }
+  });
+});
+
 describe("advanceEdgeParticles", () => {
   it("spawns nothing without flow", () => {
     const state = createEdgeParticles();
@@ -154,12 +177,43 @@ describe("advanceEdgeParticles", () => {
   it("moves particles into a full queue less far than into an empty one", () => {
     const travelled = (queueFill: number) => {
       const state = createEdgeParticles();
-      state.particles.push({ distance: 900, kind: "ok", burst: null });
+      state.particles.push({
+        distance: 900,
+        kind: "ok",
+        retry: false,
+        burst: null,
+      });
       advanceEdgeParticles(state, drive({ length: 1000, queueFill }), 0.2);
       return state.particles[0].distance;
     };
 
     expect(travelled(0)).toBeCloseTo(928, 6);
     expect(travelled(1)).toBeLessThan(travelled(0));
+  });
+
+  it("marks particles on an edge with no retries as originals", () => {
+    const state = createEdgeParticles();
+    advanceEdgeParticles(state, drive({ flow: 1 }), 0.4);
+
+    expect(state.particles[0].retry).toBe(false);
+  });
+
+  it("marks every particle as a retry when the whole flow is retries", () => {
+    const state = createEdgeParticles();
+    advanceEdgeParticles(state, drive({ flow: 1, retry: 1 }), 0.4);
+
+    expect(state.particles[0].retry).toBe(true);
+  });
+
+  it("makes the retry share of particles match the edge's retry share", () => {
+    const state = createEdgeParticles();
+    advanceEdgeParticles(
+      state,
+      drive({ length: 1e6, flow: 100, retry: 25 }),
+      1,
+    );
+
+    expect(state.particles).toHaveLength(8);
+    expect(state.particles.filter((p) => p.retry)).toHaveLength(2);
   });
 });
