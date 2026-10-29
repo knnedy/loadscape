@@ -17,6 +17,7 @@ export type NodeConfigPatch = Partial<
     | "latencyMs"
     | "failRate"
     | "rps"
+    | "timeoutMs"
   >
 >;
 
