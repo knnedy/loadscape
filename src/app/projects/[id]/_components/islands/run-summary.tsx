@@ -39,7 +39,11 @@ function refusedDetail(node: NodeSummary) {
     node.saturatedSeconds > 0
       ? `, at capacity for ${formatClock(node.saturatedSeconds)}`
       : "";
-  return `Refused ${formatRateCompact(node.refused)} requests${from}${saturated}.`;
+  const retries =
+    node.refusedRetries >= 1
+      ? ` ${formatRateCompact(node.refusedRetries)} of those were retries.`
+      : "";
+  return `Refused ${formatRateCompact(node.refused)} requests${from}${saturated}.${retries}`;
 }
 
 function queueDetail(node: NodeSummary) {
@@ -167,8 +171,16 @@ function SummaryCard() {
   const queues = summary.nodes
     .filter((node) => node.peakQueue >= 1)
     .slice(0, MAX_LISTED);
+  const retryEdges = summary.retryEdges.slice(0, MAX_LISTED);
+  const retryExtra =
+    summary.generated > 0
+      ? Math.round((summary.retried / summary.generated) * 100)
+      : 0;
   const allClear =
-    !summary.bottleneck && summary.successRate === 1 && summary.lost < 1;
+    !summary.bottleneck &&
+    summary.successRate === 1 &&
+    summary.lost < 1 &&
+    summary.retried < 1;
 
   return (
     <div className="absolute top-28 right-4 z-20 flex max-h-[calc(100%-8rem)] w-80 flex-col overflow-y-auto rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur-sm">
@@ -238,6 +250,15 @@ function SummaryCard() {
           {formatClock(summary.firstFailureAt)}.
         </p>
       )}
+      {summary.retried >= 1 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Retries sent {formatRateCompact(summary.retried)} extra requests
+          {summary.generated > 0
+            ? `, ${retryExtra}% on top of the traffic generated`
+            : ""}
+          . Dropped counts include retries.
+        </p>
+      )}
       {allClear && (
         <p className="mt-3 text-xs text-muted-foreground">
           Everything completed. Nothing was dropped or lost.
@@ -274,6 +295,22 @@ function SummaryCard() {
               label={labelOf(node.id)}
               detail={refusedDetail(node)}
               onSelect={() => focusNode(node.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {retryEdges.length > 0 && (
+        <div className="mt-3">
+          <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
+            Retried most
+          </p>
+          {retryEdges.map((edge) => (
+            <NodeRow
+              key={edge.id}
+              label={`${labelOf(edge.source)} → ${labelOf(edge.target)}`}
+              detail={`Retried ${formatRateCompact(edge.retried)} times, up to ${formatRateCompact(edge.peakRate)} per second.`}
+              onSelect={() => focusNode(edge.target)}
             />
           ))}
         </div>
