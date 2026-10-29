@@ -212,18 +212,24 @@ export interface SegmentOption<T extends string> {
   description?: string;
 }
 
+// With `mixed`, nothing is highlighted and the hint says the selection
+// differs; choosing an option then sets all of them.
 export function Segmented<T extends string>({
   label,
   value,
   options,
+  mixed = false,
   onChange,
 }: {
   label: string;
-  value: T;
+  value: T | undefined;
   options: SegmentOption<T>[];
+  mixed?: boolean;
   onChange: (value: T) => void;
 }) {
-  const current = options.find((option) => option.value === value);
+  const current = mixed
+    ? undefined
+    : options.find((option) => option.value === value);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -239,11 +245,11 @@ export function Segmented<T extends string>({
             key={option.value}
             type="button"
             role="radio"
-            aria-checked={option.value === value}
+            aria-checked={!mixed && option.value === value}
             onClick={() => onChange(option.value)}
             className={cn(
               "rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-              option.value === value
+              !mixed && option.value === value
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-border text-muted-foreground hover:bg-accent",
             )}>
@@ -251,10 +257,16 @@ export function Segmented<T extends string>({
           </button>
         ))}
       </div>
-      {current?.description && (
+      {mixed ? (
         <p className="text-xs leading-snug text-muted-foreground">
-          {current.description}
+          The selection differs. Choosing an option sets all of them.
         </p>
+      ) : (
+        current?.description && (
+          <p className="text-xs leading-snug text-muted-foreground">
+            {current.description}
+          </p>
+        )
       )}
     </div>
   );
