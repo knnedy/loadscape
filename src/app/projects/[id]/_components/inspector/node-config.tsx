@@ -6,7 +6,7 @@ import {
   getAnnotation,
   getCategoryDef,
 } from "@/lib/catalog/components";
-import { formatRate } from "@/lib/simulation/capacity";
+import { formatRateCompact } from "@/lib/simulation/capacity";
 import { presetFor } from "@/lib/simulation/catalog-presets";
 import { PRESETS, type PresetKey } from "@/lib/simulation/presets";
 import type { Fanout } from "@/lib/simulation/types";
@@ -15,12 +15,15 @@ import type { NodeConfigPatch } from "../../_store/slices/nodes-slice";
 import { useTopologyStore } from "../../_store/topology-provider";
 import { CapacityField } from "./capacity-field";
 import {
+  Callout,
   Field,
   Section,
   Segmented,
+  SpecStrip,
   UnitInput,
   toPercent,
   type SegmentOption,
+  type SpecItem,
 } from "./field-parts";
 
 type FieldKey =
@@ -28,6 +31,7 @@ type FieldKey =
   | "rps"
   | "hitRatio"
   | "buffer"
+  | "timeoutMs"
   | "fanout"
   | "latencyMs"
   | "failRate";
@@ -41,6 +45,7 @@ const OVERRIDE_KEYS = [
   "latencyMs",
   "failRate",
   "rps",
+  "timeoutMs",
 ] as const;
 
 const FIELD_KEYS: Record<FieldKey, readonly (typeof OVERRIDE_KEYS)[number][]> =
@@ -49,6 +54,7 @@ const FIELD_KEYS: Record<FieldKey, readonly (typeof OVERRIDE_KEYS)[number][]> =
     rps: ["rps"],
     hitRatio: ["hitRatio"],
     buffer: ["buffer"],
+    timeoutMs: ["timeoutMs"],
     fanout: ["fanout"],
     latencyMs: ["latencyMs"],
     failRate: ["failRate"],
@@ -60,9 +66,14 @@ interface Layout {
 }
 
 const SERVICE_LAYOUT: Layout = {
-  sections: [{ title: "Load", fields: ["capacity"] }],
-  advanced: ["buffer", "latencyMs", "failRate"],
+  sections: [{ title: "Capacity", fields: ["capacity"] }],
+  advanced: ["buffer", "timeoutMs", "latencyMs", "failRate"],
 };
+
+const QUEUEING_LAYOUT: Layout["sections"] = [
+  { title: "Capacity", fields: ["capacity"] },
+  { title: "Queueing", fields: ["buffer", "timeoutMs"] },
+];
 
 const LAYOUT: Record<PresetKey, Layout> = {
   client: {
@@ -71,28 +82,22 @@ const LAYOUT: Record<PresetKey, Layout> = {
   },
   cache: {
     sections: [
-      { title: "Load", fields: ["capacity"] },
+      { title: "Capacity", fields: ["capacity"] },
       { title: "Behaviour", fields: ["hitRatio"] },
     ],
-    advanced: ["buffer", "latencyMs", "failRate"],
+    advanced: ["buffer", "timeoutMs", "latencyMs", "failRate"],
   },
   loadBalancer: {
     sections: [
-      { title: "Load", fields: ["capacity"] },
-      { title: "Behaviour", fields: ["fanout"] },
+      { title: "Capacity", fields: ["capacity"] },
+      { title: "Routing", fields: ["fanout"] },
     ],
     advanced: ["latencyMs", "failRate"],
   },
   gateway: SERVICE_LAYOUT,
   compute: SERVICE_LAYOUT,
-  database: {
-    sections: [{ title: "Load", fields: ["capacity", "buffer"] }],
-    advanced: ["latencyMs", "failRate"],
-  },
-  queue: {
-    sections: [{ title: "Load", fields: ["capacity", "buffer"] }],
-    advanced: ["failRate"],
-  },
+  database: { sections: QUEUEING_LAYOUT, advanced: ["latencyMs", "failRate"] },
+  queue: { sections: QUEUEING_LAYOUT, advanced: ["failRate"] },
   external: {
     sections: [{ title: "Behaviour", fields: ["latencyMs", "failRate"] }],
     advanced: [],
@@ -102,51 +107,89 @@ const LAYOUT: Record<PresetKey, Layout> = {
 const FANOUT_OPTIONS: SegmentOption<Fanout>[] = [
   {
     value: "all",
-    label: "Call every one",
+    label: "Fan-out",
     description:
-      "Each request calls every connection, scaled by its share. Like an API calling a database and a payment service.",
+      "Each request invokes every outgoing edge, scaled by its call probability. Like an API calling a database and a payment provider.",
   },
   {
     value: "split",
-    label: "Pick one",
+    label: "Weighted",
     description:
-      "Each request goes to exactly one connection, chosen by weight. Like a load balancer spreading traffic.",
+      "Each request is routed to exactly one outgoing edge, chosen by weight. Like a load balancer.",
   },
 ];
 
-function describe(
+function formatDuration(ms: number) {
+  if (ms >= 1000) return `${Math.round(ms / 100) / 10} s`;
+  return `${Math.round(ms * 10) / 10} ms`;
+}
+
+function specsFor(
   key: PresetKey,
   data: TopologyNodeData,
   base: (typeof PRESETS)[PresetKey],
-): string {
+): SpecItem[] {
   const total = (data.capacity ?? base.capacity) * (data.instances ?? 1);
   const buffer = data.buffer ?? base.buffer;
   const latency = data.latencyMs ?? base.latencyMs;
-  const hit = toPercent(data.hitRatio ?? base.hitRatio);
-  const fail = toPercent(data.failRate ?? base.failRate);
-  const fanout = data.fanout ?? base.fanout;
+  const timeout = data.timeoutMs ?? base.timeoutMs;
+  const routing =
+    (data.fanout ?? base.fanout) === "split" ? "weighted" : "fan-out";
+
+  const capacity: SpecItem = {
+    label: key === "queue" ? "Drain rate" : "Capacity",
+    value: `${formatRateCompact(total)}/s`,
+  };
+  const latencyItem: SpecItem = {
+    label: "Latency",
+    value: formatDuration(latency),
+  };
+  const bufferItem: SpecItem = {
+    label: key === "queue" ? "Max depth" : "Buffer",
+    value: formatRateCompact(buffer),
+    tone: buffer > 0 ? "default" : "muted",
+  };
+  const timeoutItem: SpecItem = {
+    label: key === "queue" ? "TTL" : "Timeout",
+    value: timeout > 0 ? formatDuration(timeout) : "off",
+    tone: timeout > 0 ? "default" : "muted",
+  };
 
   switch (key) {
     case "client":
-      return `Sends ${formatRate(data.rps ?? base.rps)} requests per second into the system. Everything else is measured against this.`;
+      return [
+        {
+          label: "Rate",
+          value: `${formatRateCompact(data.rps ?? base.rps)}/s`,
+        },
+        { label: "Routing", value: routing },
+      ];
     case "cache":
-      return `Answers ${hit}% of requests itself and passes the rest on, up to ${formatRate(total)} per second.`;
+      return [
+        capacity,
+        {
+          label: "Hit ratio",
+          value: `${toPercent(data.hitRatio ?? base.hitRatio)}%`,
+        },
+        latencyItem,
+      ];
     case "loadBalancer":
-      return fanout === "split"
-        ? `Spreads requests across its connections, up to ${formatRate(total)} per second.`
-        : `Sends every request to all of its connections, up to ${formatRate(total)} per second.`;
+      return [capacity, { label: "Routing", value: routing }, latencyItem];
     case "gateway":
-      return `Passes every request on after ${formatRate(latency)} ms, up to ${formatRate(total)} per second.`;
     case "compute":
-      return `Does the work for up to ${formatRate(total)} requests per second, then calls each of its connections.`;
+      return [capacity, latencyItem, bufferItem];
     case "database":
-      return buffer > 0
-        ? `Serves up to ${formatRate(total)} requests per second. Up to ${formatRate(buffer)} more can wait; anything beyond that is dropped.`
-        : `Serves up to ${formatRate(total)} requests per second. Anything beyond that is dropped.`;
+      return [capacity, bufferItem, timeoutItem];
     case "queue":
-      return `Holds up to ${formatRate(buffer)} waiting requests and hands them on at ${formatRate(total)} per second. When it is full, new requests are turned away.`;
+      return [capacity, bufferItem, timeoutItem];
     case "external":
-      return `A third-party service with no capacity limit. It answers every request after ${formatRate(latency)} ms${fail > 0 ? ` and fails ${fail}% of them` : ""}.`;
+      return [
+        latencyItem,
+        {
+          label: "Error rate",
+          value: `${toPercent(data.failRate ?? base.failRate)}%`,
+        },
+      ];
   }
 }
 
@@ -207,18 +250,19 @@ export function NodeConfig({ id }: { id: string }) {
             capacity={data.capacity}
             capacityOverridden={data.capacity !== undefined}
             instances={data.instances}
-            capacityLabel={isQueue ? "Processing speed" : undefined}
+            capacityLabel={isQueue ? "Drain rate" : undefined}
             capacityHint={
               isQueue
-                ? "Requests per second the queue hands on. Faster than new requests arrive and it stays empty; slower and it fills up."
+                ? "Messages delivered downstream per second, per consumer. Below the arrival rate, depth grows until the buffer is full."
                 : undefined
             }
             instancesLabel={isQueue ? "Consumers" : undefined}
             instancesHint={
               isQueue
-                ? "Workers pulling from the queue. Total speed is processing speed times consumers."
+                ? "Parallel consumers. Total drain rate = drain rate × consumers."
                 : undefined
             }
+            totalLabel={isQueue ? "Total drain rate" : undefined}
             onCapacityChange={(capacity) => set({ capacity })}
             onInstancesChange={(instances) => set({ instances })}
           />
@@ -228,8 +272,8 @@ export function NodeConfig({ id }: { id: string }) {
           <Field
             key={field}
             id="config-rps"
-            label="Traffic generated"
-            hint="Requests per second this client sends."
+            label="Request rate"
+            hint="Open-loop arrival rate generated by this client."
             changed={data.rps !== undefined}
             onReset={() => set({ rps: undefined })}>
             <UnitInput
@@ -247,8 +291,8 @@ export function NodeConfig({ id }: { id: string }) {
           <Field
             key={field}
             id="config-hit-ratio"
-            label="Cache hit rate"
-            hint="Share of requests answered right here. Hits never reach the next component."
+            label="Hit ratio"
+            hint="Fraction of requests served from cache. Hits are not forwarded downstream."
             changed={data.hitRatio !== undefined}
             onReset={() => set({ hitRatio: undefined })}>
             <UnitInput
@@ -276,11 +320,11 @@ export function NodeConfig({ id }: { id: string }) {
           <Field
             key={field}
             id="config-buffer"
-            label={isQueue ? "Queue size" : "Waiting line"}
+            label={isQueue ? "Max depth" : "Buffer"}
             hint={
               isQueue
-                ? "How many requests the queue can hold. When it is full, new requests are turned away."
-                : "How many requests can wait when it is busy. At 0, anything over capacity is dropped straight away."
+                ? "Maximum messages held. When full, new messages are rejected."
+                : "Requests that can queue while all instances are busy. At 0, excess load is shed immediately."
             }
             changed={data.buffer !== undefined}
             onReset={() => set({ buffer: undefined })}>
@@ -288,17 +332,50 @@ export function NodeConfig({ id }: { id: string }) {
               id="config-buffer"
               value={data.buffer}
               base={base.buffer}
-              unit="requests"
+              unit={isQueue ? "messages" : "requests"}
               min={0}
               onChange={(buffer) => set({ buffer })}
             />
           </Field>
         );
+      case "timeoutMs": {
+        const buffered = (data.buffer ?? base.buffer) > 0;
+        return (
+          <div key={field} className="flex flex-col gap-2">
+            <Field
+              id="config-timeout"
+              label={isQueue ? "Message TTL" : "Queue timeout"}
+              hint={
+                isQueue
+                  ? "Messages older than this are discarded before delivery. Producers are not notified, so goodput is unaffected. 0 disables."
+                  : "Requests queued longer than this fail with a timeout and the caller sees the error. 0 disables."
+              }
+              changed={data.timeoutMs !== undefined}
+              onReset={() => set({ timeoutMs: undefined })}>
+              <UnitInput
+                id="config-timeout"
+                value={data.timeoutMs}
+                base={base.timeoutMs}
+                unit="ms"
+                min={0}
+                max={60_000}
+                onChange={(timeoutMs) => set({ timeoutMs })}
+              />
+            </Field>
+            {!buffered && (
+              <Callout tone="warning">
+                No effect while the buffer is 0: nothing queues, so nothing can
+                time out.
+              </Callout>
+            )}
+          </div>
+        );
+      }
       case "fanout":
         return (
           <Field
             key={field}
-            label="With several connections"
+            label="Routing"
             changed={data.fanout !== undefined}
             onReset={() => set({ fanout: undefined })}>
             <Segmented
@@ -316,8 +393,8 @@ export function NodeConfig({ id }: { id: string }) {
           <Field
             key={field}
             id="config-latency"
-            label="Response time"
-            hint="How long one request takes when it is not busy. It stretches as load nears capacity."
+            label="Idle latency"
+            hint="Service time at zero load. Latency grows as utilization approaches capacity."
             changed={data.latencyMs !== undefined}
             onReset={() => set({ latencyMs: undefined })}>
             <UnitInput
@@ -335,8 +412,8 @@ export function NodeConfig({ id }: { id: string }) {
           <Field
             key={field}
             id="config-fail-rate"
-            label="Random failures"
-            hint="Requests that fail even when it is idle, like a flaky dependency."
+            label="Error rate"
+            hint="Fraction of requests that fail regardless of load."
             changed={data.failRate !== undefined}
             onReset={() => set({ failRate: undefined })}>
             <UnitInput
@@ -373,15 +450,13 @@ export function NodeConfig({ id }: { id: string }) {
           ({getAnnotation(component)})
         </p>
       )}
-      <p className="mt-3 rounded-lg bg-muted/50 px-2.5 py-2 text-xs leading-snug text-foreground">
-        {describe(key, data, base)}
-      </p>
+
+      <SpecStrip items={specsFor(key, data, base)} />
 
       {changed.length > 0 && (
         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            {changed.length} {changed.length === 1 ? "setting" : "settings"}{" "}
-            changed
+            {changed.length} {changed.length === 1 ? "override" : "overrides"}
           </span>
           <button
             type="button"
