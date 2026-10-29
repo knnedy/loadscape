@@ -14,6 +14,45 @@ const STEP_BUTTON =
 
 export const toPercent = (ratio: number) => Math.round(ratio * 1000) / 10;
 
+export interface SpecItem {
+  label: string;
+  value: string;
+  tone?: "default" | "muted" | "warning";
+}
+
+// A dense row of key figures, so the numbers that matter are readable at a
+// glance before any field is touched.
+export function SpecStrip({ items }: { items: SpecItem[] }) {
+  return (
+    <dl
+      className="mt-3 grid divide-x divide-border overflow-hidden rounded-lg border border-border bg-muted/30"
+      style={{
+        gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
+      }}>
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2">
+          <dt className="truncate text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+            {item.label}
+          </dt>
+          <dd
+            className={cn(
+              "truncate font-mono text-[13px]",
+              item.tone === "muted"
+                ? "text-muted-foreground"
+                : item.tone === "warning"
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-foreground",
+            )}>
+            {item.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function Section({
   title,
   children,
@@ -55,7 +94,7 @@ export function Field({
           {label}
           {changed && (
             <span
-              title="Changed from the default"
+              title="Overridden"
               className="size-1.5 rounded-full bg-primary"
             />
           )}
@@ -259,7 +298,7 @@ export function Segmented<T extends string>({
       </div>
       {mixed ? (
         <p className="text-xs leading-snug text-muted-foreground">
-          The selection differs. Choosing an option sets all of them.
+          Mixed values. Selecting an option applies it to all.
         </p>
       ) : (
         current?.description && (
