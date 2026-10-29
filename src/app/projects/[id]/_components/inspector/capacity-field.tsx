@@ -12,9 +12,9 @@ const MIN_INSTANCES = 1;
 const MAX_INSTANCES = 10_000;
 
 const DEFAULT_CAPACITY_HINT =
-  "Requests per second one copy can handle. Anything beyond this is dropped, or waits if there is a line.";
+  "Sustained throughput per instance. Load above this is shed, or buffered if a buffer is set.";
 const DEFAULT_INSTANCES_HINT =
-  "Identical copies sharing the load. Total capacity is capacity times copies.";
+  "Identical replicas behind this node. Total capacity = capacity × instances.";
 
 interface CapacityFieldProps {
   idPrefix: string;
@@ -28,6 +28,7 @@ interface CapacityFieldProps {
   capacityHint?: string;
   instancesLabel?: string;
   instancesHint?: string;
+  totalLabel?: string;
   onCapacityChange: (value: number | undefined) => void;
   onInstancesChange: (value: number | undefined) => void;
 }
@@ -42,8 +43,9 @@ export function CapacityField({
   instancesMixed = false,
   capacityLabel = "Capacity",
   capacityHint = DEFAULT_CAPACITY_HINT,
-  instancesLabel = "Copies",
+  instancesLabel = "Instances",
   instancesHint = DEFAULT_INSTANCES_HINT,
+  totalLabel = "Total capacity",
   onCapacityChange,
   onInstancesChange,
 }: CapacityFieldProps) {
@@ -127,17 +129,18 @@ export function CapacityField({
           placeholder={instancesMixed ? "Mixed" : undefined}
           min={MIN_INSTANCES}
           max={MAX_INSTANCES}
-          decrementLabel="Remove one"
-          incrementLabel="Add one"
+          decrementLabel="Remove one instance"
+          incrementLabel="Add one instance"
           onChange={setInstances}
         />
       </Field>
 
       {total !== undefined && (
         <Callout>
-          Handles up to{" "}
-          <span className="font-mono text-foreground">{formatRate(total)}</span>{" "}
-          requests per second in total.
+          {totalLabel}{" "}
+          <span className="font-mono text-foreground">
+            {formatRate(total)} req/s
+          </span>
         </Callout>
       )}
     </div>
