@@ -8,7 +8,7 @@ import {
   type NodeInput,
   type PresetKey,
 } from "./presets";
-import { DT, createState, step } from "./step";
+import { DT, createState, step, timeoutTicks } from "./step";
 import type { Frame, SimGraph } from "./types";
 
 const NUM_RUNS = 200;
@@ -31,6 +31,7 @@ const nodeArb = fc.record({
   hitPercent: fc.integer({ min: 0, max: 100 }),
   failPercent: fc.integer({ min: 0, max: 50 }),
   fanout: fc.constantFrom("all", "split"),
+  timeoutMs: fc.constantFrom(0, 0, 200, 1000, 5000, 20_000),
 });
 
 const edgeArb = fc.record({
@@ -65,6 +66,7 @@ const scenarioArb = fc
           hitRatio: node.hitPercent / 100,
           failRate: node.failPercent / 100,
           fanout: node.fanout,
+          timeoutMs: node.timeoutMs,
         },
       })),
     ];
@@ -150,7 +152,7 @@ describe("engine invariants", () => {
     });
   });
 
-  it("2. each queue moves by admitted minus served and stays within its buffer", () => {
+  it("2. each queue moves by admitted minus served minus timed out, and stays within its buffer", () => {
     check((graph, frames) => {
       const buffers = new Map(
         graph.nodes.map((node) => [node.id, node.buffer]),
@@ -160,7 +162,10 @@ describe("engine invariants", () => {
       for (const frame of frames) {
         for (const [id, node] of Object.entries(frame.nodes)) {
           const before = previous.get(id) ?? 0;
-          expectClose(node.queue, before + (node.admitted - node.served) * DT);
+          expectClose(
+            node.queue,
+            before + (node.admitted - node.served - node.timedOut) * DT,
+          );
           expect(node.queue).toBeGreaterThanOrEqual(0);
           expect(node.queue).toBeLessThanOrEqual(buffers.get(id) ?? 0);
           previous.set(id, node.queue);
@@ -235,6 +240,40 @@ describe("engine invariants", () => {
           sum += edge.retry;
         }
         expectClose(frame.totals.retries, sum);
+      }
+    });
+  });
+
+  it("7. timeouts only happen where a line and a timeout exist, stay within the timeout, and add up in the totals", () => {
+    check((graph, frames) => {
+      const inert = new Set(
+        graph.nodes
+          .filter((node) => node.timeoutMs === 0 || node.buffer === 0)
+          .map((node) => node.id),
+      );
+      const limits = new Map(
+        graph.nodes
+          .filter(
+            (node) =>
+              node.role === "queue" && node.timeoutMs > 0 && node.buffer > 0,
+          )
+          .map((node) => [node.id, timeoutTicks(node.timeoutMs) * DT]),
+      );
+
+      for (const frame of frames) {
+        let timedOut = 0;
+        let refused = 0;
+        for (const [id, node] of Object.entries(frame.nodes)) {
+          if (inert.has(id)) expect(node.timedOut).toBe(0);
+          const limit = limits.get(id);
+          if (limit !== undefined) {
+            expect(node.lagSeconds).toBeLessThanOrEqual(limit + 1e-9);
+          }
+          timedOut += node.timedOut;
+          refused += node.dropped + node.timedOut;
+        }
+        expectClose(frame.totals.timedOut, timedOut);
+        expectClose(frame.totals.dropped + frame.totals.lost, refused);
       }
     });
   });
