@@ -16,13 +16,13 @@ const STYLE_OPTIONS: SegmentOption<EdgeStyle>[] = [
     value: "sync",
     label: "Sync",
     description:
-      "The caller waits for the answer, so a failure at the target fails the caller's request too.",
+      "The caller blocks on the response, so failures at the target fail the caller's request too.",
   },
   {
     value: "async",
     label: "Async",
     description:
-      "The caller sends and moves on. Requests the target drops are lost silently.",
+      "Fire-and-forget. Requests dropped by the target are lost silently.",
   },
 ];
 
@@ -31,19 +31,19 @@ const DIRECTION_OPTIONS: SegmentOption<EdgeDirection>[] = [
     value: "forward",
     label: "Forward",
     description:
-      "Arrow points at the target. Drawing only: it does not change how traffic flows.",
+      "Arrowhead at the target. Rendering only: requests always flow source → target.",
   },
   {
     value: "bidirectional",
-    label: "Both ways",
+    label: "Both ends",
     description:
-      "Arrows at both ends. Drawing only: requests still flow from source to target.",
+      "Arrowheads at both ends. Rendering only: requests always flow source → target.",
   },
   {
     value: "none",
-    label: "No arrow",
+    label: "None",
     description:
-      "No arrows. Drawing only: requests still flow from source to target.",
+      "No arrowheads. Rendering only: requests always flow source → target.",
   },
 ];
 
@@ -87,7 +87,7 @@ export function BulkEditPanel() {
     components.length > 0 && plural(components.length, "component"),
     groups.length > 0 && plural(groups.length, "group"),
     notes.length > 0 && plural(notes.length, "note"),
-    selectedEdges.length > 0 && plural(selectedEdges.length, "connection"),
+    selectedEdges.length > 0 && plural(selectedEdges.length, "edge"),
   ]
     .filter(Boolean)
     .join(", ");
@@ -112,11 +112,11 @@ export function BulkEditPanel() {
       </span>
       <p className="mt-2 text-sm text-foreground">{summary}</p>
       <p className="mt-1 text-xs leading-snug text-muted-foreground">
-        Changes here apply to everything selected, in one step you can undo.
+        Edits apply to every selected item as a single undo step.
       </p>
 
       {components.length > 0 && (
-        <Section title="Load">
+        <Section title="Capacity">
           {limiting.length > 0 ? (
             <>
               <CapacityField
@@ -138,20 +138,20 @@ export function BulkEditPanel() {
               />
               {base === undefined && (
                 <Callout>
-                  These components have different defaults, so a capacity typed
-                  here replaces all of them.
+                  The selected components have different default capacities, so
+                  a typed value overrides all of them.
                 </Callout>
               )}
               <p className="text-xs text-muted-foreground">
                 {limiting.length === components.length
                   ? `Applies to ${plural(components.length, "component")}.`
-                  : `Applies to ${limiting.length} of ${plural(components.length, "component")}. The rest don't limit load.`}
+                  : `Applies to ${limiting.length} of ${plural(components.length, "component")}; the rest are not capacity-limited.`}
               </p>
             </>
           ) : (
             <Callout>
-              None of the selected components limit load, so there is no
-              capacity to edit.
+              None of the selected components are capacity-limited, so there is
+              nothing to edit.
             </Callout>
           )}
         </Section>
@@ -159,7 +159,7 @@ export function BulkEditPanel() {
 
       {selectedEdges.length > 0 && (
         <>
-          <Section title="How they are called">
+          <Section title="Invocation">
             <Segmented
               label="Call style"
               value={style.value}
@@ -168,22 +168,22 @@ export function BulkEditPanel() {
               onChange={(next) => updateSelectedEdges({ style: next })}
             />
           </Section>
-          <Section title="Arrows">
+          <Section title="Arrowheads">
             <Segmented
-              label="Arrow direction"
+              label="Arrowheads"
               value={direction.value}
               mixed={direction.mixed}
               options={DIRECTION_OPTIONS}
               onChange={(next) => updateSelectedEdges({ direction: next })}
             />
             <p className="text-xs text-muted-foreground">
-              Applies to {plural(selectedEdges.length, "connection")}.
+              Applies to {plural(selectedEdges.length, "edge")}.
             </p>
           </Section>
           <div className="mt-4">
             <Callout>
-              Retries and traffic share are set one connection at a time. Select
-              a single connection to change them.
+              Retry policy and call probability are per edge. Select a single
+              edge to change them.
             </Callout>
           </div>
         </>
@@ -192,8 +192,8 @@ export function BulkEditPanel() {
       {components.length === 0 && selectedEdges.length === 0 && (
         <div className="mt-5">
           <Callout>
-            Select components or connections to edit them together. Groups and
-            notes have no settings to share.
+            Select components or edges to edit them together. Groups and notes
+            have no shared settings.
           </Callout>
         </div>
       )}
