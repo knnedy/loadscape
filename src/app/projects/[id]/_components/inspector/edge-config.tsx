@@ -19,6 +19,7 @@ import {
   Field,
   Section,
   Segmented,
+  SpecStrip,
   Stepper,
   UnitInput,
   toPercent,
@@ -32,13 +33,13 @@ const STYLE_OPTIONS: SegmentOption<EdgeStyle>[] = [
     value: "sync",
     label: "Sync",
     description:
-      "The caller waits for the answer. If the target fails or drops the request, the caller's request fails too, and the work it already did is wasted.",
+      "The caller blocks on the response. Errors, drops and timeouts at the target propagate to the caller, and the work it already did is wasted.",
   },
   {
     value: "async",
     label: "Async",
     description:
-      "The caller sends the request and moves on. If the target drops it, that is lost silently: it shows in the run summary but does not hurt the caller.",
+      "Fire-and-forget. The caller succeeds once the hand-off is accepted. Drops at the target are silent loss: reported separately and not counted against goodput.",
   },
 ];
 
@@ -47,19 +48,19 @@ const DIRECTION_OPTIONS: SegmentOption<EdgeDirection>[] = [
     value: "forward",
     label: "Forward",
     description:
-      "Arrow points at the target. Drawing only: it does not change how traffic flows.",
+      "Arrowhead at the target. Rendering only: requests always flow source → target.",
   },
   {
     value: "bidirectional",
-    label: "Both ways",
+    label: "Both ends",
     description:
-      "Arrows at both ends. Drawing only: requests still flow from source to target.",
+      "Arrowheads at both ends. Rendering only: requests always flow source → target.",
   },
   {
     value: "none",
-    label: "No arrow",
+    label: "None",
     description:
-      "No arrows. Drawing only: requests still flow from source to target.",
+      "No arrowheads. Rendering only: requests always flow source → target.",
   },
 ];
 
@@ -77,17 +78,14 @@ function EndpointDot({ category }: { category?: NodeCategory }) {
 }
 
 function backoffText(backoff: number, retries: number) {
-  const waits = Array.from(
+  const delays = Array.from(
     { length: retries },
     (_, i) => `${formatRate(backoff * 2 ** i)} ms`,
-  );
-  const sentence =
-    retries === 1
-      ? `Waits ${waits[0]} before retrying.`
-      : `Waits ${waits.join(", then ")} before each retry.`;
+  ).join(", ");
+  const text = `Delays: ${delays}. Exponential, ×2 per attempt.`;
   return backoff < DEFAULT_BACKOFF_MS
-    ? `${sentence} The simulation works in 100 ms steps, so shorter waits count as 100 ms.`
-    : sentence;
+    ? `${text} Resolution is 100 ms, one simulation tick.`
+    : text;
 }
 
 export function EdgeConfig({ id }: { id: string }) {
@@ -143,18 +141,13 @@ export function EdgeConfig({ id }: { id: string }) {
 
   const retries = data.retries ?? 0;
   const backoff = data.backoffMs ?? DEFAULT_BACKOFF_MS;
-
-  const summary = fromQueue
-    ? `${sourceLabel} hands requests on to ${targetLabel} without waiting for an answer.`
-    : isAsync
-      ? `${sourceLabel} sends requests to ${targetLabel} and moves on without waiting.`
-      : `${sourceLabel} waits for ${targetLabel} to answer.`;
+  const retrying = retries > 0 && !isAsync;
 
   return (
     <>
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
         <Link2 size={11} />
-        Connection
+        Edge
       </span>
       <div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground">
         <EndpointDot category={sourceCategory} />
@@ -163,15 +156,26 @@ export function EdgeConfig({ id }: { id: string }) {
         <EndpointDot category={targetCategory} />
         <span className="truncate">{targetLabel}</span>
       </div>
-      <p className="mt-3 rounded-lg bg-muted/50 px-2.5 py-2 text-xs leading-snug text-foreground">
-        {summary}
-      </p>
 
-      <Section title="How it is called">
+      <SpecStrip
+        items={[
+          { label: "Mode", value: isAsync ? "async" : "sync" },
+          splits
+            ? { label: "Share", value: `${portion}%` }
+            : { label: "Probability", value: `${toPercent(data.share ?? 1)}%` },
+          {
+            label: "Retries",
+            value: retrying ? `${retries}×` : "off",
+            tone: retrying ? "default" : "muted",
+          },
+        ]}
+      />
+
+      <Section title="Invocation">
         {fromQueue ? (
           <Callout>
-            Connections leaving a queue always behave as async: the queue hands
-            requests on without waiting for the answer.
+            Edges leaving a queue are always asynchronous: the queue delivers
+            without waiting for a response.
           </Callout>
         ) : (
           <Segmented
@@ -189,7 +193,7 @@ export function EdgeConfig({ id }: { id: string }) {
             <Field
               id="edge-share"
               label="Weight"
-              hint={`Gets about ${portion}% of ${sourceLabel}'s requests, compared with its other connections. A higher weight means more traffic.`}
+              hint={`Receives ~${portion}% of ${sourceLabel}'s requests, relative to its other outgoing edges.`}
               changed={data.share !== undefined}
               onReset={() => updateEdgeShare(id, undefined)}>
               <UnitInput
@@ -206,8 +210,8 @@ export function EdgeConfig({ id }: { id: string }) {
           ) : (
             <Field
               id="edge-share"
-              label="Used by"
-              hint="Share of requests that call this connection. 100% means every request; a lower share suits occasional calls, like payments."
+              label="Call probability"
+              hint="Fraction of requests that invoke this edge. 100% = every request; lower for conditional calls such as payments."
               changed={data.share !== undefined}
               onReset={() => updateEdgeShare(id, undefined)}>
               <UnitInput
@@ -232,21 +236,21 @@ export function EdgeConfig({ id }: { id: string }) {
         </Section>
       )}
 
-      <Section title="Retries">
+      <Section title="Retry policy">
         {isAsync ? (
           <Callout>
-            Retries only apply to sync connections. With async, the caller never
-            finds out about a failure, so there is nothing to retry.
+            Retries apply to synchronous edges only. An async caller never
+            observes the failure, so there is nothing to retry.
           </Callout>
         ) : (
           <>
             <Field
               id="edge-retries"
-              label="Retry failed calls"
+              label="Max retries"
               hint={
                 retries === 0
-                  ? "Off: a failed call just fails."
-                  : `Up to ${retries} more ${retries === 1 ? "attempt" : "attempts"} after a failure.`
+                  ? "Disabled: a failed call fails the request."
+                  : `Up to ${retries} additional ${retries === 1 ? "attempt" : "attempts"} per failed call.`
               }
               changed={data.retries !== undefined}
               onReset={() => updateEdgeRetry(id, { retries: undefined })}>
@@ -266,7 +270,7 @@ export function EdgeConfig({ id }: { id: string }) {
               <>
                 <Field
                   id="edge-backoff"
-                  label="Wait before the first retry"
+                  label="Initial backoff"
                   hint={backoffText(backoff, retries)}
                   changed={data.backoffMs !== undefined}
                   onReset={() => updateEdgeRetry(id, { backoffMs: undefined })}>
@@ -281,8 +285,9 @@ export function EdgeConfig({ id }: { id: string }) {
                   />
                 </Field>
                 <Callout tone="warning">
-                  Each retry is extra load on {targetLabel}. If it is already
-                  struggling, retries can push it further over (a retry storm).
+                  Retry amplification: every retry is extra load on{" "}
+                  {targetLabel}. Near saturation this can sustain an overload
+                  (retry storm).
                 </Callout>
               </>
             )}
@@ -294,7 +299,7 @@ export function EdgeConfig({ id }: { id: string }) {
         <Field
           id="edge-label"
           label="Label"
-          hint="Text shown on the line, such as the protocol.">
+          hint="Text shown on the edge, such as the protocol.">
           <Input
             id="edge-label"
             value={data.label ?? ""}
@@ -313,9 +318,9 @@ export function EdgeConfig({ id }: { id: string }) {
             ))}
           </div>
         </Field>
-        <Field label="Arrows">
+        <Field label="Arrowheads">
           <Segmented
-            label="Arrow direction"
+            label="Arrowheads"
             value={data.direction}
             options={DIRECTION_OPTIONS}
             onChange={(direction) => updateEdgeDirection(id, direction)}
