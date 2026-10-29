@@ -7,12 +7,14 @@ import type {
   SimGraph,
   SimNode,
   SimState,
+  WaitingCohort,
 } from "./types";
 
 export const DT = 0.1;
 
 const MIN_HEADROOM = 0.05;
 const MIN_RETRY_VOLUME = 1e-9;
+const MIN_COHORT_VOLUME = 1e-12;
 
 export interface StepResult {
   state: SimState;
@@ -25,14 +27,26 @@ interface Pass {
   admitted: number;
   served: number;
   dropped: number;
+  timedOut: number;
+  timeoutShare: number;
   queue: number;
   capacity: number;
   admission: number;
   utilization: number;
+  maxWait: number;
+}
+
+interface Settled {
+  served: number;
+  overflow: number;
+  evicted: number;
+  expired: number;
+  queue: number;
+  cohorts: WaitingCohort[] | null;
 }
 
 export function createState(): SimState {
-  return { tick: 0, queues: {}, retries: {} };
+  return { tick: 0, queues: {}, retries: {}, waiting: {} };
 }
 
 // Each retry waits twice as long as the one before it, and never less than
@@ -42,6 +56,11 @@ export function retryDelayTicks(backoffMs: number, attempt: number): number {
     1,
     Math.round((backoffMs * 2 ** (attempt - 1)) / (DT * 1000)),
   );
+}
+
+// How many ticks a request may wait before it gives up. 0 means never.
+export function timeoutTicks(timeoutMs: number): number {
+  return timeoutMs > 0 ? Math.max(1, Math.round(timeoutMs / (DT * 1000))) : 0;
 }
 
 function schedule(
@@ -56,6 +75,109 @@ function schedule(
   );
   if (existing) existing.volume += volume;
   else list.push({ due, attempt, volume });
+}
+
+function volumeOf(cohorts: WaitingCohort[]): number {
+  let total = 0;
+  for (const cohort of cohorts) total += cohort.volume;
+  return total;
+}
+
+function trimTail(cohorts: WaitingCohort[], amount: number) {
+  let cut = amount;
+  while (cut > MIN_COHORT_VOLUME && cohorts.length > 0) {
+    const last = cohorts[cohorts.length - 1];
+    const take = Math.min(last.volume, cut);
+    last.volume -= take;
+    cut -= take;
+    if (last.volume <= MIN_COHORT_VOLUME) cohorts.pop();
+  }
+}
+
+// A node with no timeout only needs the total waiting.
+function settleScalar(
+  node: SimNode,
+  state: SimState,
+  arrivals: number,
+  budget: number,
+): Settled {
+  const held = state.queues[node.id] ?? 0;
+  const kept = Math.min(held, node.buffer);
+  const demand = kept + arrivals;
+  const served = Math.min(demand, budget);
+  return {
+    served,
+    overflow: Math.min(arrivals, Math.max(0, demand - served - node.buffer)),
+    evicted: held - kept,
+    expired: 0,
+    queue: Math.min(demand - served, node.buffer),
+    cohorts: null,
+  };
+}
+
+// A node with a timeout keeps its line as batches by arrival tick, oldest
+// first. Batches that have waited the full timeout give up before service.
+function settleCohorts(
+  node: SimNode,
+  state: SimState,
+  nextTick: number,
+  arrivals: number,
+  budget: number,
+  limit: number,
+): Settled {
+  const stored = state.waiting[node.id];
+  const seed = state.queues[node.id] ?? 0;
+  let cohorts: WaitingCohort[] = stored
+    ? stored.map((cohort) => ({ ...cohort }))
+    : seed > MIN_COHORT_VOLUME
+      ? [{ tick: state.tick, volume: seed }]
+      : [];
+
+  let first = 0;
+  let expired = 0;
+  while (
+    first < cohorts.length &&
+    nextTick - 1 - cohorts[first].tick >= limit
+  ) {
+    expired += cohorts[first].volume;
+    first++;
+  }
+  cohorts = cohorts.slice(first);
+
+  const held = volumeOf(cohorts);
+  const kept = Math.min(held, node.buffer);
+  trimTail(cohorts, held - kept);
+
+  if (arrivals > 0) cohorts.push({ tick: nextTick, volume: arrivals });
+  const demand = kept + arrivals;
+  const served = Math.min(demand, budget);
+
+  let remaining = served;
+  let head = 0;
+  while (remaining > 0 && head < cohorts.length) {
+    const cohort = cohorts[head];
+    const take = Math.min(cohort.volume, remaining);
+    cohort.volume -= take;
+    remaining -= take;
+    if (cohort.volume <= MIN_COHORT_VOLUME) head++;
+    else break;
+  }
+  cohorts = cohorts.slice(head);
+
+  const overflow = Math.min(
+    arrivals,
+    Math.max(0, demand - served - node.buffer),
+  );
+  trimTail(cohorts, overflow);
+
+  return {
+    served,
+    overflow,
+    evicted: held - kept,
+    expired,
+    queue: Math.min(demand - served, node.buffer),
+    cohorts,
+  };
 }
 
 export function step(
@@ -87,6 +209,7 @@ export function step(
   const retryFlow = new Map<string, number>();
   const released = new Map<string, RetryEntry[]>();
   const waiting = new Map<string, RetryEntry[]>();
+  const waitingNext: Record<string, WaitingCohort[]> = {};
   const passes = new Map<string, Pass>();
 
   // Retries due this tick come out of per-edge state, so they are known
@@ -113,32 +236,40 @@ export function step(
     const generated = node.role === "source" ? node.rps * factor * DT : 0;
     const arrivals = generated + (inflow.get(id) ?? 0);
     const capacity = node.capacity * node.instances;
-    const held = state.queues[id] ?? 0;
-    const kept = Math.min(held, node.buffer);
-    const evicted = held - kept;
-    const demand = kept + arrivals;
-    const served = Math.min(demand, capacity * DT);
-    const overflow = Math.min(
-      arrivals,
-      Math.max(0, demand - served - node.buffer),
-    );
-    const queue = Math.min(demand - served, node.buffer);
+    const limit = node.buffer > 0 ? timeoutTicks(node.timeoutMs) : 0;
+    const settled =
+      limit > 0
+        ? settleCohorts(node, state, nextTick, arrivals, capacity * DT, limit)
+        : settleScalar(node, state, arrivals, capacity * DT);
+
+    if (settled.cohorts && settled.cohorts.length > 0) {
+      waitingNext[id] = settled.cohorts;
+    }
+
+    // A queue's callers only need the hand-off, so its timeouts are silent.
+    const timeoutShare =
+      node.role === "queue" || arrivals <= 0
+        ? 0
+        : Math.min(1, settled.expired / arrivals);
 
     passes.set(id, {
       generated,
       arrivals,
-      admitted: arrivals - overflow,
-      served,
-      dropped: overflow + evicted,
-      queue,
+      admitted: arrivals - settled.overflow,
+      served: settled.served,
+      dropped: settled.overflow + settled.evicted,
+      timedOut: settled.expired,
+      timeoutShare,
+      queue: settled.queue,
       capacity,
-      admission: arrivals > 0 ? (arrivals - overflow) / arrivals : 1,
+      admission: arrivals > 0 ? (arrivals - settled.overflow) / arrivals : 1,
       utilization: arrivals / DT / capacity,
+      maxWait: limit > 0 ? limit * DT : Infinity,
     });
 
     const edges = outgoing.get(id) ?? [];
     const weight = edges.reduce((sum, edge) => sum + edge.share, 0);
-    const emitted = served * (1 - node.hitRatio);
+    const emitted = settled.served * (1 - node.hitRatio);
 
     for (const edge of edges) {
       const portion =
@@ -206,12 +337,13 @@ export function step(
       id,
       pass.admission *
         (1 - node.failRate) *
+        (1 - pass.timeoutShare) *
         (node.hitRatio + (1 - node.hitRatio) * calls),
     );
 
     const service =
       node.latencyMs / Math.max(1 - pass.utilization, MIN_HEADROOM);
-    const waitMs = (pass.queue / pass.capacity) * 1000;
+    const waitMs = Math.min(pass.queue / pass.capacity, pass.maxWait) * 1000;
     const own = node.role === "queue" ? 0 : service + waitMs;
     latency.set(id, own + (1 - node.hitRatio) * callMs);
   }
@@ -225,6 +357,7 @@ export function step(
   let dropped = 0;
   let lost = 0;
   let retrying = 0;
+  let timedOut = 0;
 
   for (const id of order) {
     const node = nodes.get(id);
@@ -237,10 +370,14 @@ export function step(
       admitted: pass.admitted / DT,
       served: pass.served / DT,
       dropped: pass.dropped / DT,
+      timedOut: pass.timedOut / DT,
       queue: pass.queue,
       utilization: Math.min(1, pass.utilization),
       latencyMs: latency.get(id) ?? 0,
-      lagSeconds: node.role === "queue" ? pass.queue / pass.capacity : 0,
+      lagSeconds:
+        node.role === "queue"
+          ? Math.min(pass.queue / pass.capacity, pass.maxWait)
+          : 0,
     };
 
     generated += pass.generated / DT;
@@ -252,6 +389,15 @@ export function step(
         : 0;
     lost += (pass.dropped / DT) * viaAsync;
     dropped += (pass.dropped / DT) * (1 - viaAsync);
+
+    const expired = pass.timedOut / DT;
+    timedOut += expired;
+    if (node.role === "queue") {
+      lost += expired;
+    } else {
+      lost += expired * viaAsync;
+      dropped += expired * (1 - viaAsync);
+    }
   }
 
   for (const edge of graph.edges) {
@@ -261,7 +407,9 @@ export function step(
     const target = nodes.get(edge.target);
     const pass = passes.get(edge.target);
     const accepted =
-      target && pass ? pass.admission * (1 - target.failRate) : 1;
+      target && pass
+        ? pass.admission * (1 - target.failRate) * (1 - pass.timeoutShare)
+        : 1;
     const failShare = 1 - (success.get(edge.target) ?? 1);
 
     edgeFrames[edge.id] = {
@@ -296,12 +444,19 @@ export function step(
   }
 
   return {
-    state: { tick: nextTick, queues, retries },
+    state: { tick: nextTick, queues, retries, waiting: waitingNext },
     frame: {
       t: nextTick * DT,
       nodes: nodeFrames,
       edges: edgeFrames,
-      totals: { generated, goodput, dropped, lost, retries: retrying },
+      totals: {
+        generated,
+        goodput,
+        dropped,
+        lost,
+        retries: retrying,
+        timedOut,
+      },
     },
   };
 }
