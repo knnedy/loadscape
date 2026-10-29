@@ -75,6 +75,30 @@ function dot(
   ctx.fill();
 }
 
+// Original requests are solid; retries are hollow rings, so the extra load
+// from a retry policy is visible next to the traffic that caused it.
+function body(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  color: string,
+  alpha: number,
+  hollow: boolean,
+) {
+  if (!hollow) {
+    dot(ctx, x, y, radius, color, alpha);
+    return;
+  }
+  dot(ctx, x, y, radius, color, alpha * 0.2);
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, TAU);
+  ctx.stroke();
+}
+
 function drawParticle(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -97,11 +121,20 @@ function drawParticle(
     return;
   }
 
-  dot(ctx, x, y, radius, base, 1);
+  const hollow = particle.retry;
+  body(ctx, x, y, radius, base, 1, hollow);
   if (particle.kind === "rejected") {
-    dot(ctx, x, y, radius, destructive, smoothstep((progress - 0.55) / 0.45));
+    body(
+      ctx,
+      x,
+      y,
+      radius,
+      destructive,
+      smoothstep((progress - 0.55) / 0.45),
+      hollow,
+    );
   } else if (particle.kind === "downstream") {
-    dot(ctx, x, y, radius, DOWNSTREAM_FAILURE, 0.85);
+    body(ctx, x, y, radius, DOWNSTREAM_FAILURE, 0.85, hollow);
   }
 }
 
@@ -191,6 +224,7 @@ export function ParticleLayer() {
             {
               length: edge.path.total,
               flow: edgeFrame.flow,
+              retry: edgeFrame.retry,
               failed: edgeFrame.failed,
               rejected: edgeFrame.rejected,
               queueFill,
