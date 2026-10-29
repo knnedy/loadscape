@@ -39,6 +39,7 @@ function toNodeInput(id: string, data: TopologyNodeData): NodeInput {
       latencyMs: data.latencyMs,
       failRate: data.failRate,
       rps: data.rps,
+      timeoutMs: data.timeoutMs,
     },
   };
 }
