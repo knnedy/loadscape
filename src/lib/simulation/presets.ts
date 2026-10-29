@@ -47,6 +47,7 @@ const RANGES = {
   latencyMs: { min: 0, max: MAX_LATENCY_MS },
   failRate: { min: 0, max: 1 },
   rps: { min: 0, max: MAX_RATE },
+  timeoutMs: { min: 0, max: 60_000 },
   share: { min: 0, max: 1 },
   retries: { min: 0, max: 5 },
   backoffMs: { min: 0, max: 5000 },
@@ -60,6 +61,7 @@ const NUMERIC_KEYS = [
   "latencyMs",
   "failRate",
   "rps",
+  "timeoutMs",
 ] as const;
 
 export const EDGE_DEFAULTS = { share: 1, retries: 0, backoffMs: 100 } as const;
@@ -75,6 +77,7 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     latencyMs: 0,
     failRate: 0,
     rps: 100,
+    timeoutMs: 0,
   },
   cache: {
     role: "service",
@@ -86,6 +89,7 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     latencyMs: 10,
     failRate: 0,
     rps: 0,
+    timeoutMs: 0,
   },
   loadBalancer: {
     role: "service",
@@ -97,6 +101,7 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     latencyMs: 1,
     failRate: 0,
     rps: 0,
+    timeoutMs: 0,
   },
   gateway: {
     role: "service",
@@ -108,6 +113,7 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     latencyMs: 2,
     failRate: 0,
     rps: 0,
+    timeoutMs: 0,
   },
   compute: {
     role: "service",
@@ -119,6 +125,7 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     latencyMs: 20,
     failRate: 0,
     rps: 0,
+    timeoutMs: 0,
   },
   database: {
     role: "service",
@@ -130,6 +137,7 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     latencyMs: 5,
     failRate: 0,
     rps: 0,
+    timeoutMs: 0,
   },
   queue: {
     role: "queue",
@@ -141,6 +149,7 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     latencyMs: 0,
     failRate: 0,
     rps: 0,
+    timeoutMs: 0,
   },
   external: {
     role: "service",
@@ -152,6 +161,7 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     latencyMs: 200,
     failRate: 0,
     rps: 0,
+    timeoutMs: 0,
   },
 };
 
