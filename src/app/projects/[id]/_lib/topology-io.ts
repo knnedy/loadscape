@@ -22,6 +22,7 @@ const OVERRIDE_KEYS = [
   "latencyMs",
   "failRate",
   "rps",
+  "timeoutMs",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
