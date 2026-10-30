@@ -1,4 +1,4 @@
-export type ParticleKind = "ok" | "downstream" | "rejected";
+export type ParticleKind = "ok" | "downstream" | "rejected" | "blocked";
 
 export interface Particle {
   distance: number;
@@ -13,12 +13,14 @@ export interface EdgeParticles {
   rejectedCarry: number;
   downstreamCarry: number;
   retryCarry: number;
+  blockedCarry: number;
 }
 
 export interface EdgeDrive {
   length: number;
   flow: number;
   retry: number;
+  blocked: number;
   failed: number;
   rejected: number;
   queueFill: number;
@@ -54,15 +56,26 @@ export function speedFactor(progress: number, queueFill: number): number {
   return Math.max(MIN_SPEED_FACTOR, 1 - 0.85 * fill * ramp);
 }
 
-// Error diffusion: the share of rejected and downstream particles over any
-// run of spawns matches the engine's shares exactly, with no randomness.
+// Error diffusion: the share of blocked, rejected and downstream particles
+// over any run of spawns matches the engine's shares exactly, with no
+// randomness. A particle can only be one kind, so a share that fires on the
+// same spawn as another waits for the next one.
 export function nextKind(
-  state: Pick<EdgeParticles, "rejectedCarry" | "downstreamCarry">,
+  state: Pick<
+    EdgeParticles,
+    "rejectedCarry" | "downstreamCarry" | "blockedCarry"
+  >,
   rejectedShare: number,
   downstreamShare: number,
+  blockedShare = 0,
 ): ParticleKind {
+  state.blockedCarry += blockedShare;
   state.rejectedCarry += rejectedShare;
   state.downstreamCarry += downstreamShare;
+  if (state.blockedCarry >= 1 - EPSILON) {
+    state.blockedCarry -= 1;
+    return "blocked";
+  }
   if (state.rejectedCarry >= 1 - EPSILON) {
     state.rejectedCarry -= 1;
     return "rejected";
@@ -75,7 +88,7 @@ export function nextKind(
 }
 
 // The same diffusion for retries: over any run of spawns, the share of
-// retry particles matches the retry share of the edge's flow.
+// retry particles matches the retry share of the edge's attempts.
 export function nextRetry(
   state: Pick<EdgeParticles, "retryCarry">,
   retryShare: number,
@@ -88,8 +101,8 @@ export function nextRetry(
   return false;
 }
 
-const share = (part: number, flow: number) =>
-  flow > 0 ? Math.min(1, Math.max(0, part / flow)) : 0;
+const share = (part: number, whole: number) =>
+  whole > 0 ? Math.min(1, Math.max(0, part / whole)) : 0;
 
 export function createEdgeParticles(): EdgeParticles {
   return {
@@ -98,34 +111,40 @@ export function createEdgeParticles(): EdgeParticles {
     rejectedCarry: 0,
     downstreamCarry: 0,
     retryCarry: 0,
+    blockedCarry: 0,
   };
 }
 
 // Mutates `state` in place: it runs for every edge on every animation frame.
+// Every share is taken against all attempts, those that reached the target
+// and those a circuit breaker stopped, so particles stand for both.
 export function advanceEdgeParticles(
   state: EdgeParticles,
   drive: EdgeDrive,
   seconds: number,
 ): void {
-  const { length, flow, queueFill } = drive;
-  const rejectedShare = share(drive.rejected, flow);
+  const { length, flow, blocked, queueFill } = drive;
+  const attempts = flow + blocked;
+  const blockedShare = share(blocked, attempts);
+  const rejectedShare = share(drive.rejected, attempts);
   const downstreamShare = share(
     Math.max(0, drive.failed - drive.rejected),
-    flow,
+    attempts,
   );
-  const retryShare = share(drive.retry, flow);
+  const retryShare = share(drive.retry, attempts);
 
-  state.spawnCarry += spawnRate(flow) * seconds;
+  state.spawnCarry += spawnRate(attempts) * seconds;
   while (
     state.spawnCarry >= 1 &&
     state.particles.length < MAX_PARTICLES_PER_EDGE
   ) {
     state.spawnCarry -= 1;
+    const kind = nextKind(state, rejectedShare, downstreamShare, blockedShare);
     state.particles.push({
       distance: 0,
-      kind: nextKind(state, rejectedShare, downstreamShare),
+      kind,
       retry: nextRetry(state, retryShare),
-      burst: null,
+      burst: kind === "blocked" ? 0 : null,
     });
   }
   if (state.spawnCarry >= 1) state.spawnCarry -= Math.floor(state.spawnCarry);
