@@ -99,6 +99,12 @@ function body(
   ctx.stroke();
 }
 
+interface Colors {
+  base: string;
+  destructive: string;
+  muted: string;
+}
+
 function drawParticle(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -106,14 +112,17 @@ function drawParticle(
   radius: number,
   progress: number,
   particle: Particle,
-  base: string,
-  destructive: string,
+  colors: Colors,
 ) {
   if (particle.burst !== null) {
+    // A rejected request failed at the target; a blocked one never left,
+    // because an open circuit breaker stopped it at the source.
+    const tone =
+      particle.kind === "blocked" ? colors.muted : colors.destructive;
     const t = Math.min(1, particle.burst / BURST_SECONDS);
-    dot(ctx, x, y, radius, destructive, (1 - t) * 0.5);
+    dot(ctx, x, y, radius, tone, (1 - t) * 0.5);
     ctx.globalAlpha = 1 - t;
-    ctx.strokeStyle = destructive;
+    ctx.strokeStyle = tone;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(x, y, radius * (1 + 3 * t), 0, TAU);
@@ -122,14 +131,14 @@ function drawParticle(
   }
 
   const hollow = particle.retry;
-  body(ctx, x, y, radius, base, 1, hollow);
+  body(ctx, x, y, radius, colors.base, 1, hollow);
   if (particle.kind === "rejected") {
     body(
       ctx,
       x,
       y,
       radius,
-      destructive,
+      colors.destructive,
       smoothstep((progress - 0.55) / 0.45),
       hollow,
     );
@@ -197,6 +206,7 @@ export function ParticleLayer() {
       const [tx, ty, zoom] = flowStore.getState().transform;
       const radius = Math.min(5, Math.max(2, 3 * zoom));
       const destructive = resolveColor("--destructive", now);
+      const muted = resolveColor("--muted-foreground", now);
       const animate = status === "running";
 
       for (const id of states.keys()) {
@@ -225,6 +235,7 @@ export function ParticleLayer() {
               length: edge.path.total,
               flow: edgeFrame.flow,
               retry: edgeFrame.retry,
+              blocked: edgeFrame.blocked,
               failed: edgeFrame.failed,
               rejected: edgeFrame.rejected,
               queueFill,
@@ -233,7 +244,11 @@ export function ParticleLayer() {
           );
         }
 
-        const base = resolveColor(edge.colorVar, now);
+        const colors: Colors = {
+          base: resolveColor(edge.colorVar, now),
+          destructive,
+          muted,
+        };
         for (const particle of state.particles) {
           const point = pointAt(edge.path, particle.distance);
           drawParticle(
@@ -243,8 +258,7 @@ export function ParticleLayer() {
             radius,
             edge.path.total > 0 ? particle.distance / edge.path.total : 1,
             particle,
-            base,
-            destructive,
+            colors,
           );
         }
       }
