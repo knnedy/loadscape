@@ -8,7 +8,7 @@ import {
   type NodeInput,
   type PresetKey,
 } from "./presets";
-import { DT, createState, step, timeoutTicks } from "./step";
+import { DT, PROBE_SHARE, createState, step, timeoutTicks } from "./step";
 import type { Frame, SimGraph } from "./types";
 
 const NUM_RUNS = 200;
@@ -41,6 +41,8 @@ const edgeArb = fc.record({
   sharePercent: fc.integer({ min: 0, max: 100 }),
   retries: fc.constantFrom(0, 0, 1, 2, 3, 5),
   backoffMs: fc.integer({ min: 0, max: 2000 }),
+  breakerThreshold: fc.constantFrom(0, 0, 0.3, 0.5, 0.9),
+  breakerCooldownMs: fc.constantFrom(100, 1000, 5000),
 });
 
 const scenarioArb = fc
@@ -88,6 +90,8 @@ const scenarioArb = fc
         share: edge.sharePercent / 100,
         retries: edge.retries,
         backoffMs: edge.backoffMs,
+        breakerThreshold: edge.breakerThreshold,
+        breakerCooldownMs: edge.breakerCooldownMs,
       });
     }
 
@@ -274,6 +278,55 @@ describe("engine invariants", () => {
         }
         expectClose(frame.totals.timedOut, timedOut);
         expectClose(frame.totals.dropped + frame.totals.lost, refused);
+      }
+    });
+  });
+
+  it("8. breakers only exist where a policy applies, block only while open or probing, and move through valid states", () => {
+    const allowed: Record<string, string[]> = {
+      closed: ["closed", "open"],
+      open: ["open", "half-open"],
+      "half-open": ["half-open", "open", "closed"],
+    };
+
+    check((graph, frames) => {
+      const roles = new Map(graph.nodes.map((node) => [node.id, node.role]));
+      const inert = new Set(
+        graph.edges
+          .filter(
+            (edge) =>
+              edge.breakerThreshold === 0 ||
+              edge.mode === "async" ||
+              roles.get(edge.source) === "queue",
+          )
+          .map((edge) => edge.id),
+      );
+      const previous = new Map<string, string>();
+
+      for (const frame of frames) {
+        let blocked = 0;
+        for (const [id, edge] of Object.entries(frame.edges)) {
+          expectNonNegative(edge.blocked);
+          blocked += edge.blocked;
+
+          if (inert.has(id)) {
+            expect(edge.breaker).toBe("off");
+            expect(edge.blocked).toBe(0);
+            continue;
+          }
+
+          expect(edge.breaker).not.toBe("off");
+          if (edge.breaker === "closed") expect(edge.blocked).toBe(0);
+          if (edge.breaker === "open") expect(edge.flow).toBe(0);
+          if (edge.breaker === "half-open") {
+            expectClose(edge.flow, (edge.flow + edge.blocked) * PROBE_SHARE);
+          }
+
+          const before = previous.get(id);
+          if (before) expect(allowed[before]).toContain(edge.breaker);
+          previous.set(id, edge.breaker);
+        }
+        expectClose(frame.totals.shortCircuited, blocked);
       }
     });
   });
