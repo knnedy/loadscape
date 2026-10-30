@@ -7,18 +7,22 @@ import {
   type Edge,
   type EdgeProps,
 } from "@xyflow/react";
+import { Activity, Ban } from "lucide-react";
 import type { TopologyEdgeData, TopologyNodeData } from "@/lib/types/topology";
 import {
   DOWNSTREAM_FAILURE,
   failureTints,
   strokeWidthFor,
 } from "@/lib/simulation/flow-visuals";
+import { cn } from "@/lib/utils";
 import { useThrottledSimulation } from "@/app/projects/[id]/_hooks/use-throttled-simulation";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 import { useRegisterEdgeGeometry } from "./edge-geometry";
 import { useEdgeRoute } from "./edge-routes";
 
 type ComponentEdgeType = Edge<TopologyEdgeData, "component">;
+
+const BADGE_OFFSET = 22;
 
 export function ComponentEdge({
   id,
@@ -83,6 +87,11 @@ export function ComponentEdge({
   const isAsync = data?.style === "async";
   const edgeColor = `var(${colorVar})`;
 
+  // An open breaker passes nothing, and a half-open one is probing.
+  const breaker = flow?.breaker ?? "off";
+  const open = breaker === "open";
+  const probing = breaker === "half-open";
+
   const tints = flow
     ? failureTints(flow.flow, flow.failed, flow.rejected)
     : null;
@@ -94,7 +103,12 @@ export function ComponentEdge({
     tints && tints.rejected > 0
       ? `color-mix(in oklch, var(--destructive) ${tints.rejected}%, ${withDownstream})`
       : withDownstream;
-  const stroke = selected ? "var(--primary)" : flowColor;
+  const breakerColor = open
+    ? "var(--muted-foreground)"
+    : probing
+      ? DOWNSTREAM_FAILURE
+      : flowColor;
+  const stroke = selected ? "var(--primary)" : breakerColor;
   const width = strokeWidthFor(flow?.flow ?? 0) + (selected ? 0.5 : 0);
 
   function startEditing() {
@@ -122,10 +136,12 @@ export function ComponentEdge({
         path={path}
         markerStart={markerStart}
         markerEnd={markerEnd}
+        className={probing ? "animate-pulse" : undefined}
         style={{
           stroke,
           strokeWidth: width,
-          strokeDasharray: isAsync ? "6 4" : undefined,
+          strokeDasharray: open ? "2 5" : isAsync ? "6 4" : undefined,
+          strokeLinecap: open ? "round" : undefined,
           filter: `drop-shadow(0 0 ${selected ? 4 : 2.5}px color-mix(in oklch, ${stroke} ${
             selected ? 65 : 45
           }%, transparent))`,
@@ -163,6 +179,26 @@ export function ComponentEdge({
             )
           )}
         </div>
+        {(open || probing) && (
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${
+                labelY + (data?.label ? BADGE_OFFSET : 0)
+              }px)`,
+            }}>
+            <span
+              className={cn(
+                "flex items-center gap-1 rounded-md border bg-card px-1.5 py-0.5 text-[10px] font-semibold tracking-wide whitespace-nowrap uppercase shadow-sm",
+                open
+                  ? "border-destructive/40 text-destructive"
+                  : "border-amber-500/40 text-amber-600 dark:text-amber-400",
+              )}>
+              {open ? <Ban size={10} /> : <Activity size={10} />}
+              {open ? "open" : "half-open"}
+            </span>
+          </div>
+        )}
       </EdgeLabelRenderer>
     </>
   );
