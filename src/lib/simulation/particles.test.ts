@@ -15,10 +15,17 @@ const drive = (overrides: Partial<EdgeDrive> = {}): EdgeDrive => ({
   length: 100,
   flow: 0,
   retry: 0,
+  blocked: 0,
   failed: 0,
   rejected: 0,
   queueFill: 0,
   ...overrides,
+});
+
+const carries = () => ({
+  rejectedCarry: 0,
+  downstreamCarry: 0,
+  blockedCarry: 0,
 });
 
 describe("spawnRate", () => {
@@ -69,8 +76,8 @@ describe("speedFactor", () => {
 
 describe("nextKind", () => {
   it("matches the engine's shares exactly over a long run", () => {
-    const state = { rejectedCarry: 0, downstreamCarry: 0 };
-    const counts = { ok: 0, downstream: 0, rejected: 0 };
+    const state = carries();
+    const counts = { ok: 0, downstream: 0, rejected: 0, blocked: 0 };
     for (let i = 0; i < 1000; i++) {
       counts[nextKind(state, 0.4, 0.2)]++;
     }
@@ -78,15 +85,39 @@ describe("nextKind", () => {
     expect(Math.abs(counts.rejected - 400)).toBeLessThanOrEqual(1);
     expect(Math.abs(counts.downstream - 200)).toBeLessThanOrEqual(1);
     expect(Math.abs(counts.ok - 400)).toBeLessThanOrEqual(2);
+    expect(counts.blocked).toBe(0);
+  });
+
+  it("matches a blocked share alongside the others", () => {
+    const state = carries();
+    const counts = { ok: 0, downstream: 0, rejected: 0, blocked: 0 };
+    for (let i = 0; i < 1000; i++) {
+      counts[nextKind(state, 0.2, 0.1, 0.3)]++;
+    }
+
+    expect(Math.abs(counts.blocked - 300)).toBeLessThanOrEqual(2);
+    expect(Math.abs(counts.rejected - 200)).toBeLessThanOrEqual(2);
+    expect(Math.abs(counts.downstream - 100)).toBeLessThanOrEqual(2);
   });
 
   it("rejects every particle at a share of 1 and none at 0", () => {
-    const all = { rejectedCarry: 0, downstreamCarry: 0 };
-    const none = { rejectedCarry: 0, downstreamCarry: 0 };
+    const all = carries();
+    const none = carries();
     for (let i = 0; i < 50; i++) {
       expect(nextKind(all, 1, 0)).toBe("rejected");
       expect(nextKind(none, 0, 0)).toBe("ok");
     }
+  });
+
+  it("blocks every particle at a blocked share of 1", () => {
+    const state = carries();
+    for (let i = 0; i < 50; i++) {
+      expect(nextKind(state, 0, 0, 1)).toBe("blocked");
+    }
+  });
+
+  it("lets a blocked particle take precedence over a rejected one", () => {
+    expect(nextKind(carries(), 1, 0, 1)).toBe("blocked");
   });
 });
 
@@ -215,5 +246,43 @@ describe("advanceEdgeParticles", () => {
 
     expect(state.particles).toHaveLength(8);
     expect(state.particles.filter((p) => p.retry)).toHaveLength(2);
+  });
+
+  it("bursts blocked particles at the source without travelling", () => {
+    const state = createEdgeParticles();
+    advanceEdgeParticles(
+      state,
+      drive({ length: 1e6, flow: 0, blocked: 1e6 }),
+      0.25,
+    );
+
+    expect(state.particles).toHaveLength(3);
+    for (const particle of state.particles) {
+      expect(particle.kind).toBe("blocked");
+      expect(particle.distance).toBe(0);
+      expect(particle.burst).toBeCloseTo(0.25, 9);
+    }
+
+    advanceEdgeParticles(state, drive({ flow: 0 }), BURST_SECONDS);
+    expect(state.particles).toHaveLength(0);
+  });
+
+  it("splits particles between blocked and travelling by their share", () => {
+    const state = createEdgeParticles();
+    advanceEdgeParticles(
+      state,
+      drive({ length: 1e6, flow: 1e6, blocked: 1e6 }),
+      0.25,
+    );
+
+    expect(state.particles).toHaveLength(3);
+    const blocked = state.particles.filter((p) => p.kind === "blocked");
+    const travelling = state.particles.filter((p) => p.kind !== "blocked");
+    expect(blocked).toHaveLength(1);
+    expect(blocked[0].burst).not.toBeNull();
+    for (const particle of travelling) {
+      expect(particle.burst).toBeNull();
+      expect(particle.distance).toBeCloseTo(35, 6);
+    }
   });
 });
