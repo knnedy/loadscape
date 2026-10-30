@@ -28,6 +28,8 @@ export interface EdgeInput {
   share?: number;
   retries?: number;
   backoffMs?: number;
+  breakerThreshold?: number;
+  breakerCooldownMs?: number;
 }
 
 export interface GraphInput {
@@ -51,6 +53,10 @@ const RANGES = {
   share: { min: 0, max: 1 },
   retries: { min: 0, max: 5 },
   backoffMs: { min: 0, max: 5000 },
+  // A smoothed failure share never quite reaches 1, so the threshold stops
+  // short of it.
+  breakerThreshold: { min: 0, max: 0.95 },
+  breakerCooldownMs: { min: 100, max: 60_000 },
 } as const;
 
 const NUMERIC_KEYS = [
@@ -64,7 +70,13 @@ const NUMERIC_KEYS = [
   "timeoutMs",
 ] as const;
 
-export const EDGE_DEFAULTS = { share: 1, retries: 0, backoffMs: 100 } as const;
+export const EDGE_DEFAULTS = {
+  share: 1,
+  retries: 0,
+  backoffMs: 100,
+  breakerThreshold: 0,
+  breakerCooldownMs: 5000,
+} as const;
 
 export const PRESETS: Record<PresetKey, Behaviour> = {
   client: {
@@ -202,6 +214,14 @@ export function sanitizeBackoff(value: unknown): number | undefined {
   return bounded(value, RANGES.backoffMs);
 }
 
+export function sanitizeBreakerThreshold(value: unknown): number | undefined {
+  return bounded(value, RANGES.breakerThreshold);
+}
+
+export function sanitizeBreakerCooldown(value: unknown): number | undefined {
+  return bounded(value, RANGES.breakerCooldownMs);
+}
+
 export function resolveNode(input: NodeInput): SimNode {
   return {
     ...PRESETS[input.preset],
@@ -219,6 +239,12 @@ export function resolveEdge(input: EdgeInput): SimEdge {
     share: sanitizeShare(input.share) ?? EDGE_DEFAULTS.share,
     retries: sanitizeRetries(input.retries) ?? EDGE_DEFAULTS.retries,
     backoffMs: sanitizeBackoff(input.backoffMs) ?? EDGE_DEFAULTS.backoffMs,
+    breakerThreshold:
+      sanitizeBreakerThreshold(input.breakerThreshold) ??
+      EDGE_DEFAULTS.breakerThreshold,
+    breakerCooldownMs:
+      sanitizeBreakerCooldown(input.breakerCooldownMs) ??
+      EDGE_DEFAULTS.breakerCooldownMs,
   };
 }
 
