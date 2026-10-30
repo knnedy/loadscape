@@ -27,6 +27,7 @@ import {
 } from "./field-parts";
 
 const DEFAULT_BACKOFF_MS = 100;
+const DEFAULT_COOLDOWN_MS = 5000;
 
 const STYLE_OPTIONS: SegmentOption<EdgeStyle>[] = [
   {
@@ -97,6 +98,7 @@ export function EdgeConfig({ id }: { id: string }) {
   const updateEdgeDirection = useTopologyStore((s) => s.updateEdgeDirection);
   const updateEdgeShare = useTopologyStore((s) => s.updateEdgeShare);
   const updateEdgeRetry = useTopologyStore((s) => s.updateEdgeRetry);
+  const updateEdgeBreaker = useTopologyStore((s) => s.updateEdgeBreaker);
 
   if (!edge?.data) return null;
   const data = edge.data;
@@ -143,6 +145,9 @@ export function EdgeConfig({ id }: { id: string }) {
   const backoff = data.backoffMs ?? DEFAULT_BACKOFF_MS;
   const retrying = retries > 0 && !isAsync;
 
+  const threshold = data.breakerThreshold ?? 0;
+  const breaking = threshold > 0 && !isAsync;
+
   return (
     <>
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
@@ -162,11 +167,16 @@ export function EdgeConfig({ id }: { id: string }) {
           { label: "Mode", value: isAsync ? "async" : "sync" },
           splits
             ? { label: "Share", value: `${portion}%` }
-            : { label: "Probability", value: `${toPercent(data.share ?? 1)}%` },
+            : { label: "Calls", value: `${toPercent(data.share ?? 1)}%` },
           {
-            label: "Retries",
+            label: "Retry",
             value: retrying ? `${retries}×` : "off",
             tone: retrying ? "default" : "muted",
+          },
+          {
+            label: "Breaker",
+            value: breaking ? `${toPercent(threshold)}%` : "off",
+            tone: breaking ? "default" : "muted",
           },
         ]}
       />
@@ -289,6 +299,88 @@ export function EdgeConfig({ id }: { id: string }) {
                   {targetLabel}. Near saturation this can sustain an overload
                   (retry storm).
                 </Callout>
+              </>
+            )}
+          </>
+        )}
+      </Section>
+
+      <Section title="Circuit breaker">
+        {isAsync ? (
+          <Callout>
+            Circuit breakers apply to synchronous edges only. An async caller
+            never observes failures, so there is nothing to trip on.
+          </Callout>
+        ) : (
+          <>
+            <Field
+              id="edge-breaker-threshold"
+              label="Failure threshold"
+              hint={
+                threshold === 0
+                  ? "Disabled. Set a failure share to enable the breaker; 0% turns it off."
+                  : `Opens when the smoothed failure share on this edge reaches ${toPercent(threshold)}%.`
+              }
+              changed={data.breakerThreshold !== undefined}
+              onReset={() =>
+                updateEdgeBreaker(id, { breakerThreshold: undefined })
+              }>
+              <UnitInput
+                id="edge-breaker-threshold"
+                value={
+                  data.breakerThreshold === undefined
+                    ? undefined
+                    : toPercent(data.breakerThreshold)
+                }
+                base={0}
+                unit="%"
+                min={0}
+                max={95}
+                step={1}
+                onChange={(percent) =>
+                  updateEdgeBreaker(id, {
+                    breakerThreshold:
+                      percent === undefined ? undefined : percent / 100,
+                  })
+                }
+              />
+            </Field>
+            {breaking && (
+              <>
+                <Field
+                  id="edge-breaker-cooldown"
+                  label="Cool-down"
+                  hint="Time the breaker stays open before probing the target."
+                  changed={data.breakerCooldownMs !== undefined}
+                  onReset={() =>
+                    updateEdgeBreaker(id, { breakerCooldownMs: undefined })
+                  }>
+                  <UnitInput
+                    id="edge-breaker-cooldown"
+                    value={data.breakerCooldownMs}
+                    base={DEFAULT_COOLDOWN_MS}
+                    unit="ms"
+                    min={100}
+                    max={60_000}
+                    onChange={(breakerCooldownMs) =>
+                      updateEdgeBreaker(id, { breakerCooldownMs })
+                    }
+                  />
+                </Field>
+                <Callout>
+                  Open: calls fail fast without loading {targetLabel}, but the
+                  caller's own work is still wasted. Half-open: after the
+                  cool-down, 10% of calls probe the target for 1 s. If the probe
+                  failure share stays under the threshold the breaker closes;
+                  otherwise it re-opens.
+                </Callout>
+                {retrying && (
+                  <Callout>
+                    Retry attempts also pass through the breaker, so they fail
+                    fast while it is open and cannot amplify load on{" "}
+                    {targetLabel}.
+                  </Callout>
+                )}
               </>
             )}
           </>
