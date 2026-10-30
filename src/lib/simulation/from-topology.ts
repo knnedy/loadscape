@@ -70,6 +70,8 @@ export function fromTopology(
       share: numberOrUndefined(edge.data?.share),
       retries: numberOrUndefined(edge.data?.retries),
       backoffMs: numberOrUndefined(edge.data?.backoffMs),
+      breakerThreshold: numberOrUndefined(edge.data?.breakerThreshold),
+      breakerCooldownMs: numberOrUndefined(edge.data?.breakerCooldownMs),
     });
   }
 
