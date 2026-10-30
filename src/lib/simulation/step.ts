@@ -1,4 +1,5 @@
 import type {
+  BreakerState,
   EdgeFrame,
   Frame,
   NodeFrame,
@@ -15,6 +16,14 @@ export const DT = 0.1;
 const MIN_HEADROOM = 0.05;
 const MIN_RETRY_VOLUME = 1e-9;
 const MIN_COHORT_VOLUME = 1e-12;
+const MIN_ATTEMPTS = 1e-9;
+
+// A closed breaker watches a smoothed failure share, about a 0.5 s time
+// constant. A half-open one lets a tenth of the calls through for one
+// simulated second and then decides.
+export const BREAKER_SMOOTHING = 0.2;
+export const HALF_OPEN_TICKS = 10;
+export const PROBE_SHARE = 0.1;
 
 export interface StepResult {
   state: SimState;
@@ -46,7 +55,7 @@ interface Settled {
 }
 
 export function createState(): SimState {
-  return { tick: 0, queues: {}, retries: {}, waiting: {} };
+  return { tick: 0, queues: {}, retries: {}, waiting: {}, breakers: {} };
 }
 
 // Each retry waits twice as long as the one before it, and never less than
@@ -61,6 +70,60 @@ export function retryDelayTicks(backoffMs: number, attempt: number): number {
 // How many ticks a request may wait before it gives up. 0 means never.
 export function timeoutTicks(timeoutMs: number): number {
   return timeoutMs > 0 ? Math.max(1, Math.round(timeoutMs / (DT * 1000))) : 0;
+}
+
+// How many ticks a tripped breaker stays open before it probes.
+export function breakerCooldownTicks(cooldownMs: number): number {
+  return Math.max(1, Math.round(cooldownMs / (DT * 1000)));
+}
+
+function freshBreaker(mode: BreakerState["mode"] = "closed"): BreakerState {
+  return {
+    mode,
+    failure: 0,
+    until: 0,
+    probeTicks: 0,
+    probeAttempts: 0,
+    probeFailed: 0,
+  };
+}
+
+function trip(breaker: BreakerState, edge: SimEdge, tick: number) {
+  Object.assign(breaker, freshBreaker("open"));
+  breaker.until = tick + breakerCooldownTicks(edge.breakerCooldownMs) + 1;
+}
+
+// Called once per tick with the attempts that reached the target and the
+// share of them that failed. A breaker that trips here blocks from the next
+// tick.
+function observeBreaker(
+  breaker: BreakerState,
+  edge: SimEdge,
+  attempts: number,
+  failShare: number,
+  tick: number,
+) {
+  if (breaker.mode === "closed") {
+    if (attempts <= MIN_ATTEMPTS) return;
+    breaker.failure += BREAKER_SMOOTHING * (failShare - breaker.failure);
+    if (breaker.failure >= edge.breakerThreshold) trip(breaker, edge, tick);
+    return;
+  }
+
+  if (breaker.mode === "half-open") {
+    breaker.probeTicks += 1;
+    breaker.probeAttempts += attempts;
+    breaker.probeFailed += attempts * failShare;
+    if (
+      breaker.probeTicks < HALF_OPEN_TICKS ||
+      breaker.probeAttempts <= MIN_ATTEMPTS
+    ) {
+      return;
+    }
+    const share = breaker.probeFailed / breaker.probeAttempts;
+    if (share >= edge.breakerThreshold) trip(breaker, edge, tick);
+    else Object.assign(breaker, freshBreaker());
+  }
 }
 
 function schedule(
@@ -202,6 +265,29 @@ export function step(
   const isAsync = (edge: SimEdge) =>
     edge.mode === "async" || nodes.get(edge.source)?.role === "queue";
   const retried = (edge: SimEdge) => edge.retries > 0 && !isAsync(edge);
+  const breakable = (edge: SimEdge) =>
+    edge.breakerThreshold > 0 && !isAsync(edge);
+
+  // Each breaker is a gate on its edge: closed passes everything, open
+  // blocks everything, half-open passes a probing share. Its mode is known
+  // at the start of the tick, so the pass stays acyclic.
+  const breakerNow = new Map<string, BreakerState>();
+  const gate = new Map<string, number>();
+  for (const edge of graph.edges) {
+    if (!breakable(edge)) continue;
+    let current = state.breakers[edge.id]
+      ? { ...state.breakers[edge.id] }
+      : freshBreaker();
+    if (current.mode === "open" && nextTick >= current.until) {
+      current = freshBreaker("half-open");
+    }
+    breakerNow.set(edge.id, current);
+    gate.set(
+      edge.id,
+      current.mode === "closed" ? 1 : current.mode === "open" ? 0 : PROBE_SHARE,
+    );
+  }
+  const gateOf = (edge: SimEdge) => gate.get(edge.id) ?? 1;
 
   const inflow = new Map<string, number>();
   const asyncInflow = new Map<string, number>();
@@ -213,7 +299,8 @@ export function step(
   const passes = new Map<string, Pass>();
 
   // Retries due this tick come out of per-edge state, so they are known
-  // before any node is processed. That keeps the pass acyclic.
+  // before any node is processed. That keeps the pass acyclic. They pass
+  // through the edge's breaker like any other attempt.
   for (const edge of graph.edges) {
     if (!retried(edge)) continue;
     const due: RetryEntry[] = [];
@@ -226,7 +313,10 @@ export function step(
     released.set(edge.id, due);
     waiting.set(edge.id, rest);
     retryFlow.set(edge.id, volume);
-    inflow.set(edge.target, (inflow.get(edge.target) ?? 0) + volume);
+    inflow.set(
+      edge.target,
+      (inflow.get(edge.target) ?? 0) + volume * gateOf(edge),
+    );
   }
 
   for (const id of order) {
@@ -279,12 +369,13 @@ export function step(
             : 0
           : edge.share;
       const flow = emitted * portion;
+      const reaching = flow * gateOf(edge);
       edgeFlow.set(edge.id, flow);
-      inflow.set(edge.target, (inflow.get(edge.target) ?? 0) + flow);
+      inflow.set(edge.target, (inflow.get(edge.target) ?? 0) + reaching);
       if (isAsync(edge)) {
         asyncInflow.set(
           edge.target,
-          (asyncInflow.get(edge.target) ?? 0) + flow,
+          (asyncInflow.get(edge.target) ?? 0) + reaching,
         );
       }
     }
@@ -293,9 +384,10 @@ export function step(
   const success = new Map<string, number>();
   const latency = new Map<string, number>();
 
-  // A call that may be retried succeeds if any of its attempts does.
+  // A call succeeds only if the breaker lets it through and the target
+  // answers, and one that may be retried succeeds if any attempt does.
   const attemptSuccess = (edge: SimEdge) => {
-    const single = success.get(edge.target) ?? 1;
+    const single = gateOf(edge) * (success.get(edge.target) ?? 1);
     return edge.retries > 0 ? 1 - (1 - single) ** (1 + edge.retries) : single;
   };
 
@@ -319,7 +411,7 @@ export function step(
             calls += portion;
           } else {
             calls += portion * attemptSuccess(edge);
-            callMs += portion * (latency.get(edge.target) ?? 0);
+            callMs += portion * gateOf(edge) * (latency.get(edge.target) ?? 0);
           }
         }
       }
@@ -328,7 +420,10 @@ export function step(
         if (isAsync(edge)) continue;
         calls *= 1 - edge.share + edge.share * attemptSuccess(edge);
         if (edge.share > 0) {
-          callMs = Math.max(callMs, latency.get(edge.target) ?? 0);
+          callMs = Math.max(
+            callMs,
+            gateOf(edge) * (latency.get(edge.target) ?? 0),
+          );
         }
       }
     }
@@ -352,12 +447,14 @@ export function step(
   const edgeFrames: Record<string, EdgeFrame> = {};
   const queues: Record<string, number> = {};
   const retries: Record<string, RetryEntry[]> = {};
+  const breakersNext: Record<string, BreakerState> = {};
   let generated = 0;
   let goodput = 0;
   let dropped = 0;
   let lost = 0;
   let retrying = 0;
   let timedOut = 0;
+  let shortCircuited = 0;
 
   for (const id of order) {
     const node = nodes.get(id);
@@ -403,22 +500,37 @@ export function step(
   for (const edge of graph.edges) {
     const original = edgeFlow.get(edge.id) ?? 0;
     const retry = retryFlow.get(edge.id) ?? 0;
-    const flow = (original + retry) / DT;
+    const open = gateOf(edge);
+    const attempts = (original + retry) * open;
+    const flow = attempts / DT;
+    const blocked = ((original + retry) * (1 - open)) / DT;
     const target = nodes.get(edge.target);
     const pass = passes.get(edge.target);
     const accepted =
       target && pass
         ? pass.admission * (1 - target.failRate) * (1 - pass.timeoutShare)
         : 1;
-    const failShare = 1 - (success.get(edge.target) ?? 1);
+    const targetFail = 1 - (success.get(edge.target) ?? 1);
+    // Attempts the breaker blocked fail too, so they are retried like any
+    // other failure.
+    const attemptFail = 1 - open * (1 - targetFail);
+    const breaker = breakerNow.get(edge.id);
 
     edgeFrames[edge.id] = {
       flow,
-      retry: retry / DT,
-      failed: flow * failShare,
+      retry: (retry * open) / DT,
+      blocked,
+      breaker: breaker ? breaker.mode : "off",
+      failed: flow * targetFail,
       rejected: flow * (1 - accepted),
     };
-    retrying += retry / DT;
+    retrying += (retry * open) / DT;
+    shortCircuited += blocked;
+
+    if (breaker) {
+      observeBreaker(breaker, edge, attempts, targetFail, nextTick);
+      breakersNext[edge.id] = breaker;
+    }
 
     // Attempts that failed this tick come back after their backoff, until
     // the edge's retries are used up.
@@ -428,7 +540,7 @@ export function step(
       pending,
       nextTick + retryDelayTicks(edge.backoffMs, 1),
       1,
-      original * failShare,
+      original * attemptFail,
     );
     for (const entry of released.get(edge.id) ?? []) {
       if (entry.attempt >= edge.retries) continue;
@@ -437,14 +549,20 @@ export function step(
         pending,
         nextTick + retryDelayTicks(edge.backoffMs, attempt),
         attempt,
-        entry.volume * failShare,
+        entry.volume * attemptFail,
       );
     }
     if (pending.length > 0) retries[edge.id] = pending;
   }
 
   return {
-    state: { tick: nextTick, queues, retries, waiting: waitingNext },
+    state: {
+      tick: nextTick,
+      queues,
+      retries,
+      waiting: waitingNext,
+      breakers: breakersNext,
+    },
     frame: {
       t: nextTick * DT,
       nodes: nodeFrames,
@@ -456,6 +574,7 @@ export function step(
         lost,
         retries: retrying,
         timedOut,
+        shortCircuited,
       },
     },
   };
