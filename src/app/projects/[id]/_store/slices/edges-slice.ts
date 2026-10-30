@@ -20,7 +20,12 @@ export type EdgeRetryPatch = Partial<
   Pick<TopologyEdgeData, "retries" | "backoffMs">
 >;
 
+export type EdgeBreakerPatch = Partial<
+  Pick<TopologyEdgeData, "breakerThreshold" | "breakerCooldownMs">
+>;
+
 type EdgeConfigPatch = EdgeRetryPatch &
+  EdgeBreakerPatch &
   Partial<Pick<TopologyEdgeData, "share">>;
 
 // An undefined value removes the key, so stored data keeps only the values
@@ -62,6 +67,7 @@ export interface EdgesSlice {
   updateEdgeDirection: (id: string, direction: EdgeDirection) => void;
   updateEdgeShare: (id: string, share: number | undefined) => void;
   updateEdgeRetry: (id: string, patch: EdgeRetryPatch) => void;
+  updateEdgeBreaker: (id: string, patch: EdgeBreakerPatch) => void;
   updateSelectedEdges: (patch: {
     style?: EdgeStyle;
     direction?: EdgeDirection;
@@ -132,6 +138,12 @@ export const createEdgesSlice =
         ),
       }),
     updateEdgeRetry: (id, patch) =>
+      set({
+        edges: get().edges.map((e) =>
+          e.id === id ? { ...e, data: withEdgeConfig(e.data!, patch) } : e,
+        ),
+      }),
+    updateEdgeBreaker: (id, patch) =>
       set({
         edges: get().edges.map((e) =>
           e.id === id ? { ...e, data: withEdgeConfig(e.data!, patch) } : e,
