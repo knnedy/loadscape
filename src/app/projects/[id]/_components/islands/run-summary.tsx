@@ -27,29 +27,38 @@ function formatPercent(share: number) {
 }
 
 function formatLag(seconds: number) {
-  return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)}s`;
+  return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)} s`;
 }
 
-function refusedDetail(node: NodeSummary) {
+function rejectedDetail(node: NodeSummary) {
   const from =
     node.firstRefusedAt === null
       ? ""
       : ` from ${formatClock(node.firstRefusedAt)}`;
   const saturated =
     node.saturatedSeconds > 0
-      ? `, at capacity for ${formatClock(node.saturatedSeconds)}`
+      ? ` · saturated ${formatClock(node.saturatedSeconds)}`
       : "";
   const retries =
     node.refusedRetries >= 1
-      ? ` ${formatRateCompact(node.refusedRetries)} of those were retries.`
+      ? ` ${formatRateCompact(node.refusedRetries)} were retries.`
       : "";
-  return `Refused ${formatRateCompact(node.refused)} requests${from}${saturated}.${retries}`;
+  const timeouts =
+    !node.isQueue && node.timedOut >= 1
+      ? ` ${formatRateCompact(node.timedOut)} were queue timeouts.`
+      : "";
+  return `Rejected ${formatRateCompact(node.refused)} requests${from}${saturated}.${retries}${timeouts}`;
 }
 
 function queueDetail(node: NodeSummary) {
-  const parts = [`Peak depth ${formatRateCompact(node.peakQueue)}`];
+  const parts = [`peak depth ${formatRateCompact(node.peakQueue)}`];
   if (node.isQueue) parts.push(`peak lag ${formatLag(node.peakLagSeconds)}`);
   if (node.fullAt !== null) parts.push(`full at ${formatClock(node.fullAt)}`);
+  if (node.timedOut >= 1) {
+    parts.push(
+      `${formatRateCompact(node.timedOut)} ${node.isQueue ? "expired (TTL)" : "timed out"}`,
+    );
+  }
   return parts.join(" · ");
 }
 
@@ -77,7 +86,7 @@ function Sparkline({ history }: { history: Frame[] }) {
       viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
       preserveAspectRatio="none"
       role="img"
-      aria-label="Requests generated and completed over time"
+      aria-label="Generated load and goodput over time"
       className="h-14 w-full">
       <path
         d={linePath(history, (frame) => frame.totals.generated, max)}
@@ -109,11 +118,30 @@ function Stat({
   className?: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5 rounded-lg bg-muted/50 px-2 py-1.5">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
+    <div className="flex flex-col gap-0.5 rounded-lg bg-muted/50 px-2.5 py-2">
+      <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+        {label}
+      </span>
       <span className={cn("font-mono text-sm text-foreground", className)}>
         {value}
       </span>
+    </div>
+  );
+}
+
+function Group({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-4">
+      <p className="px-2 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+        {title}
+      </p>
+      {children}
     </div>
   );
 }
@@ -133,7 +161,9 @@ function NodeRow({
       onClick={onSelect}
       className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-accent">
       <span className="text-sm font-medium text-foreground">{label}</span>
-      <span className="text-xs text-muted-foreground">{detail}</span>
+      <span className="text-xs leading-snug text-muted-foreground">
+        {detail}
+      </span>
     </button>
   );
 }
@@ -165,22 +195,27 @@ function SummaryCard() {
   const bottleneck = summary.bottleneck
     ? summary.nodes.find((node) => node.id === summary.bottleneck?.id)
     : undefined;
-  const alsoRefused = summary.nodes
+  const alsoRejecting = summary.nodes
     .filter((node) => node.refused >= 1 && node.id !== bottleneck?.id)
     .slice(0, MAX_LISTED);
   const queues = summary.nodes
-    .filter((node) => node.peakQueue >= 1)
+    .filter((node) => node.peakQueue >= 1 || node.timedOut >= 1)
     .slice(0, MAX_LISTED);
   const retryEdges = summary.retryEdges.slice(0, MAX_LISTED);
   const retryExtra =
     summary.generated > 0
       ? Math.round((summary.retried / summary.generated) * 100)
       : 0;
+  const silentTimeouts = summary.nodes
+    .filter((node) => node.isQueue)
+    .reduce((sum, node) => sum + node.timedOut, 0);
+  const failingTimeouts = Math.max(0, summary.timedOut - silentTimeouts);
   const allClear =
     !summary.bottleneck &&
     summary.successRate === 1 &&
     summary.lost < 1 &&
-    summary.retried < 1;
+    summary.retried < 1 &&
+    summary.timedOut < 1;
 
   return (
     <div className="absolute top-28 right-4 z-20 flex max-h-[calc(100%-8rem)] w-80 flex-col overflow-y-auto rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur-sm">
@@ -188,7 +223,7 @@ function SummaryCard() {
         <div>
           <h3 className="text-sm font-semibold text-foreground">Run summary</h3>
           <p className="text-xs text-muted-foreground">
-            {formatClock(summary.seconds)} of simulated time
+            {formatClock(summary.seconds)} simulated
           </p>
         </div>
         <button
@@ -201,12 +236,15 @@ function SummaryCard() {
       </div>
 
       <div className="mt-3">
+        <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+          Success rate
+        </p>
         <p className="font-mono text-2xl font-semibold text-foreground">
           {formatPercent(summary.successRate)}
         </p>
         <p className="text-xs text-muted-foreground">
-          of requests completed ({formatRateCompact(summary.succeeded)} of{" "}
-          {formatRateCompact(summary.generated)})
+          {formatRateCompact(summary.succeeded)} of{" "}
+          {formatRateCompact(summary.generated)} requests completed
         </p>
       </div>
 
@@ -217,7 +255,7 @@ function SummaryCard() {
           <span className="flex items-center gap-2">
             <span className="flex items-center gap-1">
               <span className="h-0.5 w-3 rounded bg-primary" />
-              completed
+              goodput
             </span>
             <span className="flex items-center gap-1">
               <span className="h-0.5 w-3 rounded bg-muted-foreground/70" />
@@ -228,7 +266,7 @@ function SummaryCard() {
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <Stat label="Generated" value={formatRateCompact(summary.generated)} />
         <Stat
           label="Dropped"
@@ -236,7 +274,16 @@ function SummaryCard() {
           className={summary.dropped >= 1 ? "text-destructive" : undefined}
         />
         <Stat
-          label="Lost silently"
+          label="Timed out"
+          value={formatRateCompact(summary.timedOut)}
+          className={
+            summary.timedOut >= 1
+              ? "text-amber-600 dark:text-amber-400"
+              : undefined
+          }
+        />
+        <Stat
+          label="Lost (async)"
           value={formatRateCompact(summary.lost)}
           className={
             summary.lost >= 1 ? "text-amber-600 dark:text-amber-400" : undefined
@@ -246,81 +293,77 @@ function SummaryCard() {
 
       {summary.firstFailureAt !== null && (
         <p className="mt-3 text-xs text-muted-foreground">
-          More than 2% of requests began failing at{" "}
+          Failure onset: more than 2% of requests failing from{" "}
           {formatClock(summary.firstFailureAt)}.
         </p>
       )}
       {summary.retried >= 1 && (
         <p className="mt-3 text-xs text-muted-foreground">
-          Retries sent {formatRateCompact(summary.retried)} extra requests
-          {summary.generated > 0
-            ? `, ${retryExtra}% on top of the traffic generated`
-            : ""}
-          . Dropped counts include retries.
+          Retries added {formatRateCompact(summary.retried)} requests
+          {summary.generated > 0 ? ` (+${retryExtra}% over generated)` : ""}.
+          Dropped includes retry attempts.
+        </p>
+      )}
+      {summary.timedOut >= 1 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Timeouts expired {formatRateCompact(summary.timedOut)} requests:{" "}
+          {formatRateCompact(failingTimeouts)} failed their callers,{" "}
+          {formatRateCompact(silentTimeouts)} were silent queue TTL expiries.
         </p>
       )}
       {allClear && (
         <p className="mt-3 text-xs text-muted-foreground">
-          Everything completed. Nothing was dropped or lost.
+          All requests completed. Nothing was dropped, timed out or lost.
         </p>
       )}
 
       {bottleneck && summary.bottleneck && (
-        <div className="mt-4">
-          <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
-            {summary.bottleneck.kind === "refusing"
-              ? "Where it broke"
-              : "Closest to its limit"}
-          </p>
+        <Group
+          title={
+            summary.bottleneck.kind === "refusing"
+              ? "Bottleneck"
+              : "Highest utilization"
+          }>
           <NodeRow
             label={labelOf(bottleneck.id)}
             detail={
               summary.bottleneck.kind === "refusing"
-                ? refusedDetail(bottleneck)
-                : `Peaked at ${Math.round(bottleneck.peakUtilization * 100)}% of capacity. No requests were refused.`
+                ? rejectedDetail(bottleneck)
+                : `Peak utilization ${Math.round(bottleneck.peakUtilization * 100)}%. No requests rejected.`
             }
             onSelect={() => focusNode(bottleneck.id)}
           />
-        </div>
+        </Group>
       )}
 
-      {alsoRefused.length > 0 && (
-        <div className="mt-3">
-          <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
-            Also refused requests
-          </p>
-          {alsoRefused.map((node) => (
+      {alsoRejecting.length > 0 && (
+        <Group title="Also rejecting">
+          {alsoRejecting.map((node) => (
             <NodeRow
               key={node.id}
               label={labelOf(node.id)}
-              detail={refusedDetail(node)}
+              detail={rejectedDetail(node)}
               onSelect={() => focusNode(node.id)}
             />
           ))}
-        </div>
+        </Group>
       )}
 
       {retryEdges.length > 0 && (
-        <div className="mt-3">
-          <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
-            Retried most
-          </p>
+        <Group title="Top retry edges">
           {retryEdges.map((edge) => (
             <NodeRow
               key={edge.id}
               label={`${labelOf(edge.source)} → ${labelOf(edge.target)}`}
-              detail={`Retried ${formatRateCompact(edge.retried)} times, up to ${formatRateCompact(edge.peakRate)} per second.`}
+              detail={`${formatRateCompact(edge.retried)} retries · peak ${formatRateCompact(edge.peakRate)}/s`}
               onSelect={() => focusNode(edge.target)}
             />
           ))}
-        </div>
+        </Group>
       )}
 
       {queues.length > 0 && (
-        <div className="mt-3">
-          <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
-            Waiting
-          </p>
+        <Group title="Queues and buffers">
           {queues.map((node) => (
             <NodeRow
               key={node.id}
@@ -329,12 +372,12 @@ function SummaryCard() {
               onSelect={() => focusNode(node.id)}
             />
           ))}
-        </div>
+        </Group>
       )}
 
       <p className="mt-4 text-[11px] text-muted-foreground">
-        Illustrative only. Capacities are assumptions, so read this as the shape
-        of a failure, not a forecast.
+        Illustrative only. Capacities are assumptions: read this as the shape of
+        a failure, not a forecast.
       </p>
     </div>
   );
