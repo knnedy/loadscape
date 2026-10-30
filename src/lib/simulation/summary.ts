@@ -13,6 +13,7 @@ export interface NodeSummary {
   isQueue: boolean;
   refused: number;
   refusedRetries: number;
+  timedOut: number;
   firstRefusedAt: number | null;
   peakUtilization: number;
   saturatedSeconds: number;
@@ -36,6 +37,7 @@ export interface RunSummary {
   dropped: number;
   lost: number;
   retried: number;
+  timedOut: number;
   successRate: number;
   averageGoodput: number;
   minGoodput: number;
@@ -61,6 +63,7 @@ export function summarizeRun(
       isQueue: node.role === "queue",
       refused: 0,
       refusedRetries: 0,
+      timedOut: 0,
       firstRefusedAt: null,
       peakUtilization: 0,
       saturatedSeconds: 0,
@@ -88,6 +91,7 @@ export function summarizeRun(
   let dropped = 0;
   let lost = 0;
   let retried = 0;
+  let timedOut = 0;
   let minGoodput = Infinity;
   let firstFailureAt: number | null = null;
 
@@ -100,6 +104,7 @@ export function summarizeRun(
     dropped += totals.dropped;
     lost += totals.lost;
     retried += totals.retries;
+    timedOut += totals.timedOut;
     minGoodput = Math.min(minGoodput, totals.goodput);
     if (
       firstFailureAt === null &&
@@ -112,6 +117,7 @@ export function summarizeRun(
     for (const [id, nodeFrame] of Object.entries(frame.nodes)) {
       const node = nodes.get(id);
       if (!node) continue;
+      node.timedOut += nodeFrame.timedOut;
       node.peakUtilization = Math.max(
         node.peakUtilization,
         nodeFrame.utilization,
@@ -183,6 +189,7 @@ export function summarizeRun(
     dropped,
     lost,
     retried,
+    timedOut,
     successRate: generated > 0 ? succeeded / generated : 1,
     averageGoodput: succeeded / history.length,
     minGoodput,
