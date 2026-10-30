@@ -1,6 +1,8 @@
 import { componentCatalog } from "@/lib/catalog/components";
 import {
   sanitizeBackoff,
+  sanitizeBreakerCooldown,
+  sanitizeBreakerThreshold,
   sanitizeOverrides,
   sanitizeRetries,
   sanitizeShare,
@@ -56,11 +58,20 @@ function sanitizeNodeData(
 function sanitizeEdgeData(
   data: Record<string, unknown>,
 ): Record<string, unknown> {
-  const { share, retries, backoffMs, ...rest } = data;
+  const {
+    share,
+    retries,
+    backoffMs,
+    breakerThreshold,
+    breakerCooldownMs,
+    ...rest
+  } = data;
   const policy = {
     share: sanitizeShare(share),
     retries: sanitizeRetries(retries),
     backoffMs: sanitizeBackoff(backoffMs),
+    breakerThreshold: sanitizeBreakerThreshold(breakerThreshold),
+    breakerCooldownMs: sanitizeBreakerCooldown(breakerCooldownMs),
   };
   return {
     style: "sync",
