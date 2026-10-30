@@ -46,6 +46,8 @@ export interface TopologyEdgeData extends Record<string, unknown> {
   share?: number;
   retries?: number;
   backoffMs?: number;
+  breakerThreshold?: number;
+  breakerCooldownMs?: number;
 }
 
 export type EdgeStyle = "sync" | "async";
