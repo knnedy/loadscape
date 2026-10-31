@@ -18,6 +18,8 @@ export type NodeConfigPatch = Partial<
     | "failRate"
     | "rps"
     | "timeoutMs"
+    | "rateLimit"
+    | "rateBurst"
   >
 >;
 
