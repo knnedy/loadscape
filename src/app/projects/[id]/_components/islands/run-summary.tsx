@@ -1,9 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { formatRateCompact } from "@/lib/simulation/capacity";
-import { summarizeRun, type NodeSummary } from "@/lib/simulation/summary";
+import {
+  summarizeRun,
+  type BreakerSummary,
+  type NodeSummary,
+} from "@/lib/simulation/summary";
 import type { Frame } from "@/lib/simulation/types";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import { cn } from "@/lib/utils";
@@ -62,6 +66,19 @@ function queueDetail(node: NodeSummary) {
   return parts.join(" · ");
 }
 
+function breakerDetail(breaker: BreakerSummary) {
+  const parts = [`${breaker.trips} ${breaker.trips === 1 ? "trip" : "trips"}`];
+  if (breaker.firstOpenedAt !== null) {
+    parts.push(`first open ${formatClock(breaker.firstOpenedAt)}`);
+  }
+  parts.push(`open ${formatClock(breaker.openSeconds)}`);
+  if (breaker.halfOpenSeconds > 0) {
+    parts.push(`half-open ${formatClock(breaker.halfOpenSeconds)}`);
+  }
+  parts.push(`${formatRateCompact(breaker.shortCircuited)} short-circuited`);
+  return parts.join(" · ");
+}
+
 function linePath(
   history: Frame[],
   pick: (frame: Frame) => number,
@@ -112,13 +129,19 @@ function Stat({
   label,
   value,
   className,
+  wide = false,
 }: {
   label: string;
   value: string;
   className?: string;
+  wide?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-0.5 rounded-lg bg-muted/50 px-2.5 py-2">
+    <div
+      className={cn(
+        "flex flex-col gap-0.5 rounded-lg bg-muted/50 px-2.5 py-2",
+        wide && "col-span-2",
+      )}>
       <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
         {label}
       </span>
@@ -129,13 +152,7 @@ function Stat({
   );
 }
 
-function Group({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="mt-4">
       <p className="px-2 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
@@ -202,6 +219,8 @@ function SummaryCard() {
     .filter((node) => node.peakQueue >= 1 || node.timedOut >= 1)
     .slice(0, MAX_LISTED);
   const retryEdges = summary.retryEdges.slice(0, MAX_LISTED);
+  const breakers = summary.breakers.slice(0, MAX_LISTED);
+  const trips = summary.breakers.reduce((sum, b) => sum + b.trips, 0);
   const retryExtra =
     summary.generated > 0
       ? Math.round((summary.retried / summary.generated) * 100)
@@ -215,7 +234,8 @@ function SummaryCard() {
     summary.successRate === 1 &&
     summary.lost < 1 &&
     summary.retried < 1 &&
-    summary.timedOut < 1;
+    summary.timedOut < 1 &&
+    summary.shortCircuited < 1;
 
   return (
     <div className="absolute top-28 right-4 z-20 flex max-h-[calc(100%-8rem)] w-80 flex-col overflow-y-auto rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur-sm">
@@ -289,6 +309,14 @@ function SummaryCard() {
             summary.lost >= 1 ? "text-amber-600 dark:text-amber-400" : undefined
           }
         />
+        {summary.shortCircuited >= 1 && (
+          <Stat
+            wide
+            label="Short-circuited"
+            value={formatRateCompact(summary.shortCircuited)}
+            className="text-amber-600 dark:text-amber-400"
+          />
+        )}
       </div>
 
       {summary.firstFailureAt !== null && (
@@ -311,9 +339,18 @@ function SummaryCard() {
           {formatRateCompact(silentTimeouts)} were silent queue TTL expiries.
         </p>
       )}
+      {summary.shortCircuited >= 1 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Circuit breakers short-circuited{" "}
+          {formatRateCompact(summary.shortCircuited)} requests ({trips}{" "}
+          {trips === 1 ? "trip" : "trips"}). They failed their callers but never
+          loaded the target.
+        </p>
+      )}
       {allClear && (
         <p className="mt-3 text-xs text-muted-foreground">
-          All requests completed. Nothing was dropped, timed out or lost.
+          All requests completed. Nothing was dropped, timed out,
+          short-circuited or lost.
         </p>
       )}
 
@@ -344,6 +381,19 @@ function SummaryCard() {
               label={labelOf(node.id)}
               detail={rejectedDetail(node)}
               onSelect={() => focusNode(node.id)}
+            />
+          ))}
+        </Group>
+      )}
+
+      {breakers.length > 0 && (
+        <Group title="Circuit breakers">
+          {breakers.map((breaker) => (
+            <NodeRow
+              key={breaker.id}
+              label={`${labelOf(breaker.source)} → ${labelOf(breaker.target)}`}
+              detail={breakerDetail(breaker)}
+              onSelect={() => focusNode(breaker.target)}
             />
           ))}
         </Group>
