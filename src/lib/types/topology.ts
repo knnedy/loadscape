@@ -27,6 +27,8 @@ export interface TopologyNodeData extends Record<string, unknown> {
   failRate?: number;
   rps?: number;
   timeoutMs?: number;
+  rateLimit?: number;
+  rateBurst?: number;
 }
 
 export interface TopologyGroupData extends Record<string, unknown> {
