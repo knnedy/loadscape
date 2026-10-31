@@ -40,6 +40,8 @@ function toNodeInput(id: string, data: TopologyNodeData): NodeInput {
       failRate: data.failRate,
       rps: data.rps,
       timeoutMs: data.timeoutMs,
+      rateLimit: data.rateLimit,
+      rateBurst: data.rateBurst,
     },
   };
 }
