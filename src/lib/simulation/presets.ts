@@ -50,6 +50,8 @@ const RANGES = {
   failRate: { min: 0, max: 1 },
   rps: { min: 0, max: MAX_RATE },
   timeoutMs: { min: 0, max: 60_000 },
+  rateLimit: { min: 0, max: MAX_RATE },
+  rateBurst: { min: 0, max: MAX_RATE },
   share: { min: 0, max: 1 },
   retries: { min: 0, max: 5 },
   backoffMs: { min: 0, max: 5000 },
@@ -68,6 +70,8 @@ const NUMERIC_KEYS = [
   "failRate",
   "rps",
   "timeoutMs",
+  "rateLimit",
+  "rateBurst",
 ] as const;
 
 export const EDGE_DEFAULTS = {
@@ -90,6 +94,8 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     failRate: 0,
     rps: 100,
     timeoutMs: 0,
+    rateLimit: 0,
+    rateBurst: 0,
   },
   cache: {
     role: "service",
@@ -102,6 +108,8 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     failRate: 0,
     rps: 0,
     timeoutMs: 0,
+    rateLimit: 0,
+    rateBurst: 0,
   },
   loadBalancer: {
     role: "service",
@@ -114,6 +122,8 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     failRate: 0,
     rps: 0,
     timeoutMs: 0,
+    rateLimit: 0,
+    rateBurst: 0,
   },
   gateway: {
     role: "service",
@@ -126,6 +136,8 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     failRate: 0,
     rps: 0,
     timeoutMs: 0,
+    rateLimit: 0,
+    rateBurst: 0,
   },
   compute: {
     role: "service",
@@ -138,6 +150,8 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     failRate: 0,
     rps: 0,
     timeoutMs: 0,
+    rateLimit: 0,
+    rateBurst: 0,
   },
   database: {
     role: "service",
@@ -150,6 +164,8 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     failRate: 0,
     rps: 0,
     timeoutMs: 0,
+    rateLimit: 0,
+    rateBurst: 0,
   },
   queue: {
     role: "queue",
@@ -162,6 +178,8 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     failRate: 0,
     rps: 0,
     timeoutMs: 0,
+    rateLimit: 0,
+    rateBurst: 0,
   },
   external: {
     role: "service",
@@ -174,6 +192,8 @@ export const PRESETS: Record<PresetKey, Behaviour> = {
     failRate: 0,
     rps: 0,
     timeoutMs: 0,
+    rateLimit: 0,
+    rateBurst: 0,
   },
 };
 
