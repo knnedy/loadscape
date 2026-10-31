@@ -1,4 +1,4 @@
-import type { Frame, SimGraph } from "./types";
+import type { EdgeFrame, Frame, SimGraph } from "./types";
 
 const FAILING_SHARE = 0.02;
 const REFUSAL_FLOOR = 0.5;
@@ -30,6 +30,19 @@ export interface EdgeRetrySummary {
   peakRate: number;
 }
 
+// Counted from one sample per simulated second, so a breaker that cycles
+// faster than that is undercounted.
+export interface BreakerSummary {
+  id: string;
+  source: string;
+  target: string;
+  trips: number;
+  firstOpenedAt: number | null;
+  openSeconds: number;
+  halfOpenSeconds: number;
+  shortCircuited: number;
+}
+
 export interface RunSummary {
   seconds: number;
   generated: number;
@@ -38,12 +51,14 @@ export interface RunSummary {
   lost: number;
   retried: number;
   timedOut: number;
+  shortCircuited: number;
   successRate: number;
   averageGoodput: number;
   minGoodput: number;
   firstFailureAt: number | null;
   nodes: NodeSummary[];
   retryEdges: EdgeRetrySummary[];
+  breakers: BreakerSummary[];
   bottleneck: { id: string; kind: "refusing" | "near-limit" } | null;
 }
 
@@ -85,6 +100,22 @@ export function summarizeRun(
       },
     ]),
   );
+  const breakers = new Map<string, BreakerSummary>(
+    graph.edges.map((edge) => [
+      edge.id,
+      {
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        trips: 0,
+        firstOpenedAt: null,
+        openSeconds: 0,
+        halfOpenSeconds: 0,
+        shortCircuited: 0,
+      },
+    ]),
+  );
+  const lastMode = new Map<string, EdgeFrame["breaker"]>();
 
   let generated = 0;
   let succeeded = 0;
@@ -92,6 +123,7 @@ export function summarizeRun(
   let lost = 0;
   let retried = 0;
   let timedOut = 0;
+  let shortCircuited = 0;
   let minGoodput = Infinity;
   let firstFailureAt: number | null = null;
 
@@ -105,6 +137,7 @@ export function summarizeRun(
     lost += totals.lost;
     retried += totals.retries;
     timedOut += totals.timedOut;
+    shortCircuited += totals.shortCircuited;
     minGoodput = Math.min(minGoodput, totals.goodput);
     if (
       firstFailureAt === null &&
@@ -142,6 +175,21 @@ export function summarizeRun(
       edge.retried += edgeFrame.retry;
       edge.peakRate = Math.max(edge.peakRate, edgeFrame.retry);
 
+      const breaker = breakers.get(id);
+      if (breaker) {
+        breaker.shortCircuited += edgeFrame.blocked;
+        if (edgeFrame.breaker === "open") {
+          breaker.openSeconds += 1;
+          if (lastMode.get(id) !== "open") {
+            breaker.trips += 1;
+            if (breaker.firstOpenedAt === null) breaker.firstOpenedAt = at;
+          }
+        } else if (edgeFrame.breaker === "half-open") {
+          breaker.halfOpenSeconds += 1;
+        }
+        lastMode.set(id, edgeFrame.breaker);
+      }
+
       const node = nodes.get(edge.target);
       if (!node) continue;
       node.refused += edgeFrame.rejected;
@@ -165,6 +213,12 @@ export function summarizeRun(
   const retryEdges = [...edges.values()]
     .filter((edge) => edge.retried >= MIN_RETRIED_VOLUME)
     .sort((a, b) => b.retried - a.retried || a.id.localeCompare(b.id));
+
+  const trippedBreakers = [...breakers.values()]
+    .filter((breaker) => breaker.trips > 0)
+    .sort(
+      (a, b) => b.shortCircuited - a.shortCircuited || a.id.localeCompare(b.id),
+    );
 
   let bottleneck: RunSummary["bottleneck"] = null;
   if (ranked[0] && ranked[0].refused >= MIN_REFUSED_VOLUME) {
@@ -190,12 +244,14 @@ export function summarizeRun(
     lost,
     retried,
     timedOut,
+    shortCircuited,
     successRate: generated > 0 ? succeeded / generated : 1,
     averageGoodput: succeeded / history.length,
     minGoodput,
     firstFailureAt,
     nodes: ranked,
     retryEdges,
+    breakers: trippedBreakers,
     bottleneck,
   };
 }
