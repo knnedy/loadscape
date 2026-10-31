@@ -36,6 +36,7 @@ interface Pass {
   admitted: number;
   served: number;
   dropped: number;
+  limited: number;
   timedOut: number;
   timeoutShare: number;
   queue: number;
@@ -55,7 +56,14 @@ interface Settled {
 }
 
 export function createState(): SimState {
-  return { tick: 0, queues: {}, retries: {}, waiting: {}, breakers: {} };
+  return {
+    tick: 0,
+    queues: {},
+    retries: {},
+    waiting: {},
+    breakers: {},
+    tokens: {},
+  };
 }
 
 // Each retry waits twice as long as the one before it, and never less than
@@ -75,6 +83,13 @@ export function timeoutTicks(timeoutMs: number): number {
 // How many ticks a tripped breaker stays open before it probes.
 export function breakerCooldownTicks(cooldownMs: number): number {
   return Math.max(1, Math.round(cooldownMs / (DT * 1000)));
+}
+
+// The most requests a rate limiter's bucket can hold: the configured burst,
+// or one second of the rate, and never less than one tick's refill so the
+// limiter can always admit something.
+export function rateBucketSize(rateLimit: number, rateBurst: number): number {
+  return Math.max(rateBurst > 0 ? rateBurst : rateLimit, rateLimit * DT);
 }
 
 function freshBreaker(mode: BreakerState["mode"] = "closed"): BreakerState {
@@ -296,6 +311,7 @@ export function step(
   const released = new Map<string, RetryEntry[]>();
   const waiting = new Map<string, RetryEntry[]>();
   const waitingNext: Record<string, WaitingCohort[]> = {};
+  const tokensNext: Record<string, number> = {};
   const passes = new Map<string, Pass>();
 
   // Retries due this tick come out of per-edge state, so they are known
@@ -327,10 +343,28 @@ export function step(
     const arrivals = generated + (inflow.get(id) ?? 0);
     const capacity = node.capacity * node.instances;
     const limit = node.buffer > 0 ? timeoutTicks(node.timeoutMs) : 0;
+
+    // A rate limiter is a token bucket in front of capacity: it admits up to
+    // its refill plus whatever burst has built up, and turns the rest away at
+    // once. Those requests use no capacity and never join the line.
+    let limited = 0;
+    if (node.role !== "source" && node.rateLimit > 0) {
+      const refill = node.rateLimit * DT;
+      const bucket = rateBucketSize(node.rateLimit, node.rateBurst);
+      const available = Math.min(
+        bucket,
+        Math.min(state.tokens[id] ?? bucket, bucket) + refill,
+      );
+      const allowed = Math.min(arrivals, available);
+      limited = arrivals - allowed;
+      tokensNext[id] = available - allowed;
+    }
+    const entering = arrivals - limited;
+
     const settled =
       limit > 0
-        ? settleCohorts(node, state, nextTick, arrivals, capacity * DT, limit)
-        : settleScalar(node, state, arrivals, capacity * DT);
+        ? settleCohorts(node, state, nextTick, entering, capacity * DT, limit)
+        : settleScalar(node, state, entering, capacity * DT);
 
     if (settled.cohorts && settled.cohorts.length > 0) {
       waitingNext[id] = settled.cohorts;
@@ -345,15 +379,16 @@ export function step(
     passes.set(id, {
       generated,
       arrivals,
-      admitted: arrivals - settled.overflow,
+      admitted: entering - settled.overflow,
       served: settled.served,
-      dropped: settled.overflow + settled.evicted,
+      dropped: limited + settled.overflow + settled.evicted,
+      limited,
       timedOut: settled.expired,
       timeoutShare,
       queue: settled.queue,
       capacity,
-      admission: arrivals > 0 ? (arrivals - settled.overflow) / arrivals : 1,
-      utilization: arrivals / DT / capacity,
+      admission: arrivals > 0 ? (entering - settled.overflow) / arrivals : 1,
+      utilization: entering / DT / capacity,
       maxWait: limit > 0 ? limit * DT : Infinity,
     });
 
@@ -455,6 +490,7 @@ export function step(
   let retrying = 0;
   let timedOut = 0;
   let shortCircuited = 0;
+  let throttled = 0;
 
   for (const id of order) {
     const node = nodes.get(id);
@@ -467,6 +503,7 @@ export function step(
       admitted: pass.admitted / DT,
       served: pass.served / DT,
       dropped: pass.dropped / DT,
+      limited: pass.limited / DT,
       timedOut: pass.timedOut / DT,
       queue: pass.queue,
       utilization: Math.min(1, pass.utilization),
@@ -479,6 +516,7 @@ export function step(
 
     generated += pass.generated / DT;
     goodput += (pass.generated / DT) * (success.get(id) ?? 1);
+    throttled += pass.limited / DT;
 
     const viaAsync =
       pass.arrivals > 0
@@ -562,6 +600,7 @@ export function step(
       retries,
       waiting: waitingNext,
       breakers: breakersNext,
+      tokens: tokensNext,
     },
     frame: {
       t: nextTick * DT,
@@ -575,6 +614,7 @@ export function step(
         retries: retrying,
         timedOut,
         shortCircuited,
+        throttled,
       },
     },
   };
