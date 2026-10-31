@@ -8,7 +8,14 @@ import {
   type NodeInput,
   type PresetKey,
 } from "./presets";
-import { DT, PROBE_SHARE, createState, step, timeoutTicks } from "./step";
+import {
+  DT,
+  PROBE_SHARE,
+  createState,
+  rateBucketSize,
+  step,
+  timeoutTicks,
+} from "./step";
 import type { Frame, SimGraph } from "./types";
 
 const NUM_RUNS = 200;
@@ -32,6 +39,8 @@ const nodeArb = fc.record({
   failPercent: fc.integer({ min: 0, max: 50 }),
   fanout: fc.constantFrom("all", "split"),
   timeoutMs: fc.constantFrom(0, 0, 200, 1000, 5000, 20_000),
+  rateLimit: fc.constantFrom(0, 0, 0, 10, 100, 1000, 5000),
+  rateBurst: fc.constantFrom(0, 0, 50, 500),
 });
 
 const edgeArb = fc.record({
@@ -69,6 +78,8 @@ const scenarioArb = fc
           failRate: node.failPercent / 100,
           fanout: node.fanout,
           timeoutMs: node.timeoutMs,
+          rateLimit: node.rateLimit,
+          rateBurst: node.rateBurst,
         },
       })),
     ];
@@ -328,6 +339,49 @@ describe("engine invariants", () => {
         }
         expectClose(frame.totals.shortCircuited, blocked);
       }
+    });
+  });
+
+  it("9. rate limits only act where one is set, never turn away more than arrived, admit no more than the bucket allows, and add up in the totals", () => {
+    check((graph, frames) => {
+      const limits = new Map(
+        graph.nodes
+          .filter((node) => node.role !== "source" && node.rateLimit > 0)
+          .map((node) => [node.id, node]),
+      );
+      const admitted = new Map<string, number>();
+
+      frames.forEach((frame, index) => {
+        let throttled = 0;
+        for (const [id, node] of Object.entries(frame.nodes)) {
+          expectNonNegative(node.limited);
+          expect(node.limited).toBeLessThanOrEqual(
+            node.offered + tolerance(node.offered),
+          );
+          expect(node.limited).toBeLessThanOrEqual(
+            node.dropped + tolerance(node.dropped),
+          );
+          throttled += node.limited;
+
+          const limiter = limits.get(id);
+          if (!limiter) {
+            expect(node.limited).toBe(0);
+            continue;
+          }
+
+          // Per tick, no more than a full bucket gets in.
+          const entering = (node.offered - node.limited) * DT;
+          const bucket = rateBucketSize(limiter.rateLimit, limiter.rateBurst);
+          expect(entering).toBeLessThanOrEqual(bucket + tolerance(bucket));
+
+          // Over the run, no more than the starting bucket plus every refill.
+          const total = (admitted.get(id) ?? 0) + entering;
+          admitted.set(id, total);
+          const ceiling = bucket + limiter.rateLimit * DT * (index + 1);
+          expect(total).toBeLessThanOrEqual(ceiling + tolerance(ceiling));
+        }
+        expectClose(frame.totals.throttled, throttled);
+      });
     });
   });
 });
