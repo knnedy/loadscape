@@ -14,6 +14,7 @@ import {
   SPEEDS,
   TICKS_PER_SECOND,
 } from "../../_store/simulation-store";
+import { LoadControl } from "./load-control";
 
 function formatClock(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -46,6 +47,7 @@ function IconButton({
 }
 
 export function RunControls() {
+  const runnable = useSimulationStore((s) => s.order !== null);
   const status = useSimulationStore((s) => s.status);
   const speed = useSimulationStore((s) => s.speed);
   const seconds = useSimulationStore((s) =>
@@ -55,7 +57,7 @@ export function RunControls() {
   const reset = useSimulationStore((s) => s.reset);
   const setSpeed = useSimulationStore((s) => s.setSpeed);
 
-  if (status === "idle") return null;
+  if (!runnable) return null;
 
   return (
     <div className="absolute top-16 right-4 z-20 flex h-9 items-center gap-1 rounded-2xl border border-border bg-card/95 p-1 shadow-lg backdrop-blur-sm">
@@ -65,7 +67,7 @@ export function RunControls() {
         onClick={stepOnce}>
         <SkipForward size={14} />
       </IconButton>
-      <IconButton label="Reset" onClick={reset}>
+      <IconButton label="Reset" disabled={status === "idle"} onClick={reset}>
         <RotateCcw size={14} />
       </IconButton>
       <div className="mx-1 h-4 w-px bg-border" />
@@ -86,6 +88,8 @@ export function RunControls() {
           </button>
         ))}
       </div>
+      <div className="mx-1 h-4 w-px bg-border" />
+      <LoadControl />
       <div className="mx-1 h-4 w-px bg-border" />
       <span className="px-1.5 font-mono text-xs text-muted-foreground tabular-nums">
         {formatClock(seconds)}
