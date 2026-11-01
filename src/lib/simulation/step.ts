@@ -25,6 +25,8 @@ export const BREAKER_SMOOTHING = 0.2;
 export const HALF_OPEN_TICKS = 10;
 export const PROBE_SHARE = 0.1;
 
+const NO_FAULTS: ReadonlySet<string> = new Set();
+
 export interface StepResult {
   state: SimState;
   frame: Frame;
@@ -37,6 +39,8 @@ interface Pass {
   served: number;
   dropped: number;
   limited: number;
+  unavailable: number;
+  down: boolean;
   timedOut: number;
   timeoutShare: number;
   queue: number;
@@ -258,11 +262,14 @@ function settleCohorts(
   };
 }
 
+// `faults` holds the ids of killed nodes. A client cannot be killed: a demand
+// outage is a load factor of 0.
 export function step(
   graph: SimGraph,
   order: string[],
   state: SimState,
   loadFactor: number,
+  faults: ReadonlySet<string> = NO_FAULTS,
 ): StepResult {
   const factor = Math.max(0, loadFactor);
   const nextTick = state.tick + 1;
@@ -277,6 +284,10 @@ export function step(
     outgoing.get(edge.source)?.push(edge);
   }
 
+  const isDown = (id: string) => {
+    const node = nodes.get(id);
+    return node !== undefined && node.role !== "source" && faults.has(id);
+  };
   const isAsync = (edge: SimEdge) =>
     edge.mode === "async" || nodes.get(edge.source)?.role === "queue";
   const retried = (edge: SimEdge) => edge.retries > 0 && !isAsync(edge);
@@ -316,9 +327,16 @@ export function step(
 
   // Retries due this tick come out of per-edge state, so they are known
   // before any node is processed. That keeps the pass acyclic. They pass
-  // through the edge's breaker like any other attempt.
+  // through the edge's breaker like any other attempt. A killed caller loses
+  // the retries it was holding.
   for (const edge of graph.edges) {
     if (!retried(edge)) continue;
+    if (isDown(edge.source)) {
+      released.set(edge.id, []);
+      waiting.set(edge.id, []);
+      retryFlow.set(edge.id, 0);
+      continue;
+    }
     const due: RetryEntry[] = [];
     const rest: RetryEntry[] = [];
     for (const entry of state.retries[edge.id] ?? []) {
@@ -339,6 +357,7 @@ export function step(
     const node = nodes.get(id);
     if (!node) continue;
 
+    const down = isDown(id);
     const generated = node.role === "source" ? node.rps * factor * DT : 0;
     const arrivals = generated + (inflow.get(id) ?? 0);
     const capacity = node.capacity * node.instances;
@@ -346,9 +365,12 @@ export function step(
 
     // A rate limiter is a token bucket in front of capacity: it admits up to
     // its refill plus whatever burst has built up, and turns the rest away at
-    // once. Those requests use no capacity and never join the line.
+    // once. Those requests use no capacity and never join the line. A killed
+    // node refuses everything before it gets that far.
     let limited = 0;
-    if (node.role !== "source" && node.rateLimit > 0) {
+    if (down) {
+      if (state.tokens[id] !== undefined) tokensNext[id] = state.tokens[id];
+    } else if (node.role !== "source" && node.rateLimit > 0) {
       const refill = node.rateLimit * DT;
       const bucket = rateBucketSize(node.rateLimit, node.rateBurst);
       const available = Math.min(
@@ -359,12 +381,16 @@ export function step(
       limited = arrivals - allowed;
       tokensNext[id] = available - allowed;
     }
-    const entering = arrivals - limited;
+    const entering = down ? 0 : arrivals - limited;
+    const budget = down ? 0 : capacity * DT;
+    const unavailable = down ? arrivals : 0;
 
+    // A killed node accepts and serves nothing, so its line is frozen:
+    // requests already waiting stay put, and still time out.
     const settled =
       limit > 0
-        ? settleCohorts(node, state, nextTick, entering, capacity * DT, limit)
-        : settleScalar(node, state, entering, capacity * DT);
+        ? settleCohorts(node, state, nextTick, entering, budget, limit)
+        : settleScalar(node, state, entering, budget);
 
     if (settled.cohorts && settled.cohorts.length > 0) {
       waitingNext[id] = settled.cohorts;
@@ -381,13 +407,19 @@ export function step(
       arrivals,
       admitted: entering - settled.overflow,
       served: settled.served,
-      dropped: limited + settled.overflow + settled.evicted,
+      dropped: unavailable + limited + settled.overflow + settled.evicted,
       limited,
+      unavailable,
+      down,
       timedOut: settled.expired,
       timeoutShare,
       queue: settled.queue,
       capacity,
-      admission: arrivals > 0 ? (entering - settled.overflow) / arrivals : 1,
+      admission: down
+        ? 0
+        : arrivals > 0
+          ? (entering - settled.overflow) / arrivals
+          : 1,
       utilization: entering / DT / capacity,
       maxWait: limit > 0 ? limit * DT : Infinity,
     });
@@ -471,11 +503,13 @@ export function step(
         (node.hitRatio + (1 - node.hitRatio) * calls),
     );
 
+    // A killed node refuses at once, so it adds no latency of its own and
+    // makes no calls.
     const service =
       node.latencyMs / Math.max(1 - pass.utilization, MIN_HEADROOM);
     const waitMs = Math.min(pass.queue / pass.capacity, pass.maxWait) * 1000;
-    const own = node.role === "queue" ? 0 : service + waitMs;
-    latency.set(id, own + (1 - node.hitRatio) * callMs);
+    const own = node.role === "queue" || pass.down ? 0 : service + waitMs;
+    latency.set(id, own + (pass.down ? 0 : (1 - node.hitRatio) * callMs));
   }
 
   const nodeFrames: Record<string, NodeFrame> = {};
@@ -504,7 +538,9 @@ export function step(
       served: pass.served / DT,
       dropped: pass.dropped / DT,
       limited: pass.limited / DT,
+      unavailable: pass.unavailable / DT,
       timedOut: pass.timedOut / DT,
+      down: pass.down,
       queue: pass.queue,
       utilization: Math.min(1, pass.utilization),
       latencyMs: latency.get(id) ?? 0,
