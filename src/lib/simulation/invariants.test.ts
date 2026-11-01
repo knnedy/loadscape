@@ -30,6 +30,12 @@ const NODE_PRESETS: PresetKey[] = [
   "external",
 ];
 
+interface Outage {
+  ids: string[];
+  from: number;
+  length: number;
+}
+
 const nodeArb = fc.record({
   preset: fc.constantFrom(...NODE_PRESETS),
   capacity: fc.integer({ min: 1, max: 5000 }),
@@ -63,8 +69,11 @@ const scenarioArb = fc
       minLength: 1,
       maxLength: 60,
     }),
+    down: fc.array(fc.nat(100), { maxLength: 3 }),
+    downFrom: fc.integer({ min: 1, max: 40 }),
+    downFor: fc.integer({ min: 1, max: 30 }),
   })
-  .map(({ nodes, edges, rps, loads }) => {
+  .map(({ nodes, edges, rps, loads, down, downFrom, downFor }) => {
     const nodeInputs: NodeInput[] = [
       { id: "n0", preset: "client", overrides: { rps } },
       ...nodes.map((node, index) => ({
@@ -110,13 +119,19 @@ const scenarioArb = fc
       nodes: nodeInputs,
       edges: [...edgeInputs.values()],
     };
+    const outage: Outage = {
+      ids: [...new Set(down.map((index) => `n${index % nodeInputs.length}`))],
+      from: downFrom,
+      length: downFor,
+    };
 
-    return { input, loads: loads.map((load) => load / 100) };
+    return { input, loads: loads.map((load) => load / 100), outage };
   });
 
 function simulate(
   input: GraphInput,
   loads: number[],
+  outage: Outage,
 ): { graph: SimGraph; frames: Frame[] } {
   const graph = resolveGraph(input);
   const ordered = orderGraph(graph);
@@ -124,19 +139,29 @@ function simulate(
 
   let state = createState();
   const frames: Frame[] = [];
-  for (const load of loads) {
-    const result = step(graph, ordered.order, state, load);
+  loads.forEach((load, index) => {
+    const tick = index + 1;
+    const active = tick >= outage.from && tick < outage.from + outage.length;
+    const result = step(
+      graph,
+      ordered.order,
+      state,
+      load,
+      new Set(active ? outage.ids : []),
+    );
     state = result.state;
     frames.push(result.frame);
-  }
+  });
   return { graph, frames };
 }
 
-function check(assertion: (graph: SimGraph, frames: Frame[]) => void) {
+function check(
+  assertion: (graph: SimGraph, frames: Frame[], outage: Outage) => void,
+) {
   fc.assert(
-    fc.property(scenarioArb, ({ input, loads }) => {
-      const { graph, frames } = simulate(input, loads);
-      assertion(graph, frames);
+    fc.property(scenarioArb, ({ input, loads, outage }) => {
+      const { graph, frames } = simulate(input, loads, outage);
+      assertion(graph, frames, outage);
     }),
     { numRuns: NUM_RUNS },
   );
@@ -193,7 +218,9 @@ describe("engine invariants", () => {
     check((_, frames) => {
       for (const frame of frames) {
         for (const node of Object.values(frame.nodes)) {
-          for (const value of Object.values(node)) expectNonNegative(value);
+          for (const value of Object.values(node)) {
+            if (typeof value === "number") expectNonNegative(value);
+          }
           expect(node.utilization).toBeLessThanOrEqual(1);
         }
         for (const edge of Object.values(frame.edges)) {
@@ -221,9 +248,9 @@ describe("engine invariants", () => {
 
   it("5. the same input produces byte-identical frames", () => {
     fc.assert(
-      fc.property(scenarioArb, ({ input, loads }) => {
-        const first = JSON.stringify(simulate(input, loads).frames);
-        const second = JSON.stringify(simulate(input, loads).frames);
+      fc.property(scenarioArb, ({ input, loads, outage }) => {
+        const first = JSON.stringify(simulate(input, loads, outage).frames);
+        const second = JSON.stringify(simulate(input, loads, outage).frames);
         expect(second).toBe(first);
       }),
       { numRuns: NUM_RUNS },
@@ -369,8 +396,10 @@ describe("engine invariants", () => {
             continue;
           }
 
-          // Per tick, no more than a full bucket gets in.
-          const entering = (node.offered - node.limited) * DT;
+          // Per tick, no more than a full bucket gets in. A killed node
+          // refuses before its limiter sees anything.
+          const entering =
+            (node.offered - node.limited - node.unavailable) * DT;
           const bucket = rateBucketSize(limiter.rateLimit, limiter.rateBurst);
           expect(entering).toBeLessThanOrEqual(bucket + tolerance(bucket));
 
@@ -381,6 +410,48 @@ describe("engine invariants", () => {
           expect(total).toBeLessThanOrEqual(ceiling + tolerance(ceiling));
         }
         expectClose(frame.totals.throttled, throttled);
+      });
+    });
+  });
+
+  it("10. a killed node refuses everything it receives, serves and emits nothing, and a client ignores the fault", () => {
+    check((graph, frames, outage) => {
+      const roles = new Map(graph.nodes.map((node) => [node.id, node.role]));
+      const sources = new Map(
+        graph.edges.map((edge) => [edge.id, edge.source]),
+      );
+
+      frames.forEach((frame, index) => {
+        const tick = index + 1;
+        const active =
+          tick >= outage.from && tick < outage.from + outage.length;
+
+        for (const [id, node] of Object.entries(frame.nodes)) {
+          const expected =
+            active && outage.ids.includes(id) && roles.get(id) !== "source";
+          expect(node.down).toBe(expected);
+
+          if (!expected) {
+            expect(node.unavailable).toBe(0);
+            continue;
+          }
+          expectClose(node.admitted, 0);
+          expectClose(node.served, 0);
+          expectClose(node.utilization, 0);
+          expectClose(node.limited, 0);
+          expectClose(node.unavailable, node.offered);
+          expect(node.unavailable).toBeLessThanOrEqual(
+            node.dropped + tolerance(node.dropped),
+          );
+        }
+
+        for (const [id, edge] of Object.entries(frame.edges)) {
+          const source = frame.nodes[sources.get(id) ?? ""];
+          if (!source?.down) continue;
+          expectClose(edge.flow, 0);
+          expectClose(edge.retry, 0);
+          expectClose(edge.blocked, 0);
+        }
       });
     });
   });
