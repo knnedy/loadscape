@@ -20,6 +20,19 @@ const CHART_HEIGHT = 56;
 const CHART_PADDING = 2;
 const MAX_LISTED = 3;
 
+// A thin, translucent scrollbar in the theme's muted colour. Chromium and
+// Firefox use the standard properties; Safari gets the rounded thumb.
+const SCROLLBAR = [
+  "[scrollbar-width:thin]",
+  "[scrollbar-color:color-mix(in_oklch,var(--muted-foreground)_35%,transparent)_transparent]",
+  "[&::-webkit-scrollbar]:w-1.5",
+  "[&::-webkit-scrollbar-track]:my-3",
+  "[&::-webkit-scrollbar-track]:bg-transparent",
+  "[&::-webkit-scrollbar-thumb]:rounded-full",
+  "[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30",
+  "[&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/50",
+];
+
 function formatClock(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
@@ -252,7 +265,11 @@ function SummaryCard() {
     summary.throttled < 1;
 
   return (
-    <div className="absolute top-28 right-4 z-20 flex max-h-[calc(100%-8rem)] w-80 flex-col overflow-y-auto rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur-sm">
+    <div
+      className={cn(
+        "absolute top-28 right-4 z-20 flex max-h-[calc(100%-8rem)] w-80 flex-col overflow-y-auto rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur-sm",
+        SCROLLBAR,
+      )}>
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Run summary</h3>
