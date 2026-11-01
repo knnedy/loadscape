@@ -20,11 +20,17 @@ type ComponentNodeType = Node<TopologyNodeData, "component">;
 
 const RATE_THRESHOLD = 0.5;
 
+// `dropped` includes what the rate limiter turned away, which is policy
+// working and not overload, so the two are shown separately.
+function overloadDrops(frame: NodeFrame) {
+  return Math.max(0, frame.dropped - frame.limited);
+}
+
 // Timeouts fail the callers of a service, so they count as shedding there.
 // At a queue they are silent TTL expiries and only warn.
 function sheds(frame: NodeFrame, isQueue: boolean) {
   return (
-    frame.dropped >= RATE_THRESHOLD ||
+    overloadDrops(frame) >= RATE_THRESHOLD ||
     (!isQueue && frame.timedOut >= RATE_THRESHOLD)
   );
 }
@@ -33,7 +39,9 @@ function toneFor(frame: NodeFrame, isQueue: boolean) {
   if (sheds(frame, isQueue) || frame.utilization >= 0.95) {
     return "bg-destructive";
   }
-  return frame.utilization >= 0.7 || frame.timedOut >= RATE_THRESHOLD
+  return frame.utilization >= 0.7 ||
+    frame.timedOut >= RATE_THRESHOLD ||
+    frame.limited >= RATE_THRESHOLD
     ? "bg-amber-500"
     : "bg-ok";
 }
@@ -42,9 +50,35 @@ function formatLag(seconds: number) {
   return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`;
 }
 
+function Row({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "destructive" | "warning";
+}) {
+  return (
+    <div className="flex justify-between font-mono text-[11px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={
+          tone === "destructive"
+            ? "text-destructive"
+            : "text-amber-600 dark:text-amber-400"
+        }>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function Gauge({ frame, isQueue }: { frame: NodeFrame; isQueue: boolean }) {
   const percent = Math.round(frame.utilization * 100);
-  const dropping = frame.dropped >= RATE_THRESHOLD;
+  const drops = overloadDrops(frame);
+  const dropping = drops >= RATE_THRESHOLD;
+  const limiting = frame.limited >= RATE_THRESHOLD;
   const expiring = frame.timedOut >= RATE_THRESHOLD;
 
   return (
@@ -59,24 +93,23 @@ function Gauge({ frame, isQueue }: { frame: NodeFrame; isQueue: boolean }) {
         <span>{percent}%</span>
         {dropping && (
           <span className="text-destructive">
-            drop {formatRateCompact(frame.dropped)}/s
+            drop {formatRateCompact(drops)}/s
           </span>
         )}
       </div>
+      {limiting && (
+        <Row
+          label="rate limited"
+          value={`${formatRateCompact(frame.limited)}/s`}
+          tone="warning"
+        />
+      )}
       {expiring && (
-        <div className="flex justify-between font-mono text-[11px]">
-          <span className="text-muted-foreground">
-            {isQueue ? "ttl expired" : "timeout"}
-          </span>
-          <span
-            className={
-              isQueue
-                ? "text-amber-600 dark:text-amber-400"
-                : "text-destructive"
-            }>
-            {formatRateCompact(frame.timedOut)}/s
-          </span>
-        </div>
+        <Row
+          label={isQueue ? "ttl expired" : "timeout"}
+          value={`${formatRateCompact(frame.timedOut)}/s`}
+          tone={isQueue ? "warning" : "destructive"}
+        />
       )}
       {isQueue && (
         <div className="flex justify-between font-mono text-[11px] text-muted-foreground">
