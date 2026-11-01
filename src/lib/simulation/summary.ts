@@ -11,10 +11,13 @@ const FULL_MARGIN = 1e-6;
 export interface NodeSummary {
   id: string;
   isQueue: boolean;
+  rateLimit: number;
   refused: number;
   refusedRetries: number;
+  limited: number;
   timedOut: number;
   firstRefusedAt: number | null;
+  firstLimitedAt: number | null;
   peakUtilization: number;
   saturatedSeconds: number;
   peakQueue: number;
@@ -52,6 +55,7 @@ export interface RunSummary {
   retried: number;
   timedOut: number;
   shortCircuited: number;
+  throttled: number;
   successRate: number;
   averageGoodput: number;
   minGoodput: number;
@@ -76,10 +80,13 @@ export function summarizeRun(
     nodes.set(node.id, {
       id: node.id,
       isQueue: node.role === "queue",
+      rateLimit: node.role === "source" ? 0 : node.rateLimit,
       refused: 0,
       refusedRetries: 0,
+      limited: 0,
       timedOut: 0,
       firstRefusedAt: null,
+      firstLimitedAt: null,
       peakUtilization: 0,
       saturatedSeconds: 0,
       peakQueue: 0,
@@ -124,6 +131,7 @@ export function summarizeRun(
   let retried = 0;
   let timedOut = 0;
   let shortCircuited = 0;
+  let throttled = 0;
   let minGoodput = Infinity;
   let firstFailureAt: number | null = null;
 
@@ -138,6 +146,7 @@ export function summarizeRun(
     retried += totals.retries;
     timedOut += totals.timedOut;
     shortCircuited += totals.shortCircuited;
+    throttled += totals.throttled;
     minGoodput = Math.min(minGoodput, totals.goodput);
     if (
       firstFailureAt === null &&
@@ -151,6 +160,10 @@ export function summarizeRun(
       const node = nodes.get(id);
       if (!node) continue;
       node.timedOut += nodeFrame.timedOut;
+      node.limited += nodeFrame.limited;
+      if (node.firstLimitedAt === null && nodeFrame.limited >= REFUSAL_FLOOR) {
+        node.firstLimitedAt = at;
+      }
       node.peakUtilization = Math.max(
         node.peakUtilization,
         nodeFrame.utilization,
@@ -245,6 +258,7 @@ export function summarizeRun(
     retried,
     timedOut,
     shortCircuited,
+    throttled,
     successRate: generated > 0 ? succeeded / generated : 1,
     averageGoodput: succeeded / history.length,
     minGoodput,
