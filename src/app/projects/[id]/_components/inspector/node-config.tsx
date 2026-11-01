@@ -32,6 +32,7 @@ type FieldKey =
   | "hitRatio"
   | "buffer"
   | "timeoutMs"
+  | "rateLimit"
   | "fanout"
   | "latencyMs"
   | "failRate";
@@ -46,6 +47,8 @@ const OVERRIDE_KEYS = [
   "failRate",
   "rps",
   "timeoutMs",
+  "rateLimit",
+  "rateBurst",
 ] as const;
 
 const FIELD_KEYS: Record<FieldKey, readonly (typeof OVERRIDE_KEYS)[number][]> =
@@ -55,6 +58,7 @@ const FIELD_KEYS: Record<FieldKey, readonly (typeof OVERRIDE_KEYS)[number][]> =
     hitRatio: ["hitRatio"],
     buffer: ["buffer"],
     timeoutMs: ["timeoutMs"],
+    rateLimit: ["rateLimit", "rateBurst"],
     fanout: ["fanout"],
     latencyMs: ["latencyMs"],
     failRate: ["failRate"],
@@ -67,7 +71,7 @@ interface Layout {
 
 const SERVICE_LAYOUT: Layout = {
   sections: [{ title: "Capacity", fields: ["capacity"] }],
-  advanced: ["buffer", "timeoutMs", "latencyMs", "failRate"],
+  advanced: ["buffer", "timeoutMs", "rateLimit", "latencyMs", "failRate"],
 };
 
 const QUEUEING_LAYOUT: Layout["sections"] = [
@@ -85,22 +89,32 @@ const LAYOUT: Record<PresetKey, Layout> = {
       { title: "Capacity", fields: ["capacity"] },
       { title: "Behaviour", fields: ["hitRatio"] },
     ],
-    advanced: ["buffer", "timeoutMs", "latencyMs", "failRate"],
+    advanced: ["buffer", "timeoutMs", "rateLimit", "latencyMs", "failRate"],
   },
   loadBalancer: {
     sections: [
       { title: "Capacity", fields: ["capacity"] },
       { title: "Routing", fields: ["fanout"] },
+      { title: "Rate limiting", fields: ["rateLimit"] },
     ],
     advanced: ["latencyMs", "failRate"],
   },
-  gateway: SERVICE_LAYOUT,
+  gateway: {
+    sections: [
+      { title: "Capacity", fields: ["capacity"] },
+      { title: "Rate limiting", fields: ["rateLimit"] },
+    ],
+    advanced: ["buffer", "timeoutMs", "latencyMs", "failRate"],
+  },
   compute: SERVICE_LAYOUT,
-  database: { sections: QUEUEING_LAYOUT, advanced: ["latencyMs", "failRate"] },
-  queue: { sections: QUEUEING_LAYOUT, advanced: ["failRate"] },
+  database: {
+    sections: QUEUEING_LAYOUT,
+    advanced: ["rateLimit", "latencyMs", "failRate"],
+  },
+  queue: { sections: QUEUEING_LAYOUT, advanced: ["rateLimit", "failRate"] },
   external: {
     sections: [{ title: "Behaviour", fields: ["latencyMs", "failRate"] }],
-    advanced: [],
+    advanced: ["rateLimit"],
   },
 };
 
@@ -124,7 +138,7 @@ function formatDuration(ms: number) {
   return `${Math.round(ms * 10) / 10} ms`;
 }
 
-function specsFor(
+function baseSpecs(
   key: PresetKey,
   data: TopologyNodeData,
   base: (typeof PRESETS)[PresetKey],
@@ -191,6 +205,20 @@ function specsFor(
         },
       ];
   }
+}
+
+// A rate limit shows up as an extra cell only once one is set.
+function specsFor(
+  key: PresetKey,
+  data: TopologyNodeData,
+  base: (typeof PRESETS)[PresetKey],
+): SpecItem[] {
+  const items = baseSpecs(key, data, base);
+  const limit = data.rateLimit ?? base.rateLimit;
+  if (key !== "client" && limit > 0) {
+    items.push({ label: "Limit", value: `${formatRateCompact(limit)}/s` });
+  }
+  return items;
 }
 
 function CategoryChip({ category }: { category: NodeCategory }) {
@@ -367,6 +395,57 @@ export function NodeConfig({ id }: { id: string }) {
                 No effect while the buffer is 0: nothing queues, so nothing can
                 time out.
               </Callout>
+            )}
+          </div>
+        );
+      }
+      case "rateLimit": {
+        const limit = data.rateLimit ?? base.rateLimit;
+        const total = (data.capacity ?? base.capacity) * (data.instances ?? 1);
+        return (
+          <div key={field} className="flex flex-col gap-4">
+            <Field
+              id="config-rate-limit"
+              label="Rate limit"
+              hint="Token-bucket refill rate for this node. Requests over the limit are rejected immediately (429-style) and never consume capacity or join the queue. 0 disables."
+              changed={data.rateLimit !== undefined}
+              onReset={() =>
+                set({ rateLimit: undefined, rateBurst: undefined })
+              }>
+              <UnitInput
+                id="config-rate-limit"
+                value={data.rateLimit}
+                base={base.rateLimit}
+                unit="req/s"
+                min={0}
+                onChange={(rateLimit) => set({ rateLimit })}
+              />
+            </Field>
+            {limit > 0 && (
+              <>
+                <Field
+                  id="config-rate-burst"
+                  label="Burst size"
+                  hint={`Bucket size: requests that can pass at once after idle time. 0 uses the default of ${formatRateCompact(limit)}, one second of the rate.`}
+                  changed={data.rateBurst !== undefined}
+                  onReset={() => set({ rateBurst: undefined })}>
+                  <UnitInput
+                    id="config-rate-burst"
+                    value={data.rateBurst}
+                    base={base.rateBurst}
+                    unit="requests"
+                    min={0}
+                    onChange={(rateBurst) => set({ rateBurst })}
+                  />
+                </Field>
+                {Number.isFinite(total) && limit > total && (
+                  <Callout>
+                    The limit is above this node&apos;s total capacity of{" "}
+                    {formatRateCompact(total)} req/s, so capacity is the binding
+                    constraint.
+                  </Callout>
+                )}
+              </>
             )}
           </div>
         );
