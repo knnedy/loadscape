@@ -92,3 +92,38 @@ export function normalizeProfile(profile: LoadProfile): LoadProfile {
       };
   }
 }
+
+// A profile is written with its start relative to now. This turns that into
+// the absolute simulated time the engine uses.
+export function startingIn(profile: LoadProfile, nowS: number): LoadProfile {
+  if (profile.kind === "constant") return profile;
+  return { ...profile, startS: profile.startS + nowS };
+}
+
+const factorText = (value: number) => `${Math.round(value * 100) / 100}×`;
+
+export function profileLabel(profile: LoadProfile): string {
+  switch (profile.kind) {
+    case "constant":
+      return "steady";
+    case "spike":
+      return `${factorText(profile.factor)} spike`;
+    case "step":
+      return `${factorText(profile.factor)} surge`;
+    case "ramp":
+      return `${factorText(profile.from)}→${factorText(profile.to)} ramp`;
+  }
+}
+
+// The highest multiplier the profile reaches, never below the steady 1×.
+export function peakFactor(profile: LoadProfile): number {
+  switch (profile.kind) {
+    case "constant":
+      return 1;
+    case "spike":
+    case "step":
+      return Math.max(1, profile.factor);
+    case "ramp":
+      return Math.max(profile.from, profile.to);
+  }
+}
