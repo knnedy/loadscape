@@ -51,7 +51,22 @@ function rejectedDetail(node: NodeSummary) {
     !node.isQueue && node.timedOut >= 1
       ? ` ${formatRateCompact(node.timedOut)} were queue timeouts.`
       : "";
-  return `Rejected ${formatRateCompact(node.refused)} requests${from}${saturated}.${retries}${timeouts}`;
+  const limited =
+    node.limited >= 1
+      ? ` ${formatRateCompact(node.limited)} were rate limited.`
+      : "";
+  return `Rejected ${formatRateCompact(node.refused)} requests${from}${saturated}.${retries}${timeouts}${limited}`;
+}
+
+function limiterDetail(node: NodeSummary) {
+  const parts = [
+    `limit ${formatRateCompact(node.rateLimit)}/s`,
+    `${formatRateCompact(node.limited)} rejected`,
+  ];
+  if (node.firstLimitedAt !== null) {
+    parts.push(`from ${formatClock(node.firstLimitedAt)}`);
+  }
+  return parts.join(" · ");
 }
 
 function queueDetail(node: NodeSummary) {
@@ -129,19 +144,13 @@ function Stat({
   label,
   value,
   className,
-  wide = false,
 }: {
   label: string;
   value: string;
   className?: string;
-  wide?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-0.5 rounded-lg bg-muted/50 px-2.5 py-2",
-        wide && "col-span-2",
-      )}>
+    <div className="flex flex-col gap-0.5 rounded-lg bg-muted/50 px-2.5 py-2">
       <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
         {label}
       </span>
@@ -218,6 +227,10 @@ function SummaryCard() {
   const queues = summary.nodes
     .filter((node) => node.peakQueue >= 1 || node.timedOut >= 1)
     .slice(0, MAX_LISTED);
+  const limiters = summary.nodes
+    .filter((node) => node.limited >= 1)
+    .sort((a, b) => b.limited - a.limited || a.id.localeCompare(b.id))
+    .slice(0, MAX_LISTED);
   const retryEdges = summary.retryEdges.slice(0, MAX_LISTED);
   const breakers = summary.breakers.slice(0, MAX_LISTED);
   const trips = summary.breakers.reduce((sum, b) => sum + b.trips, 0);
@@ -235,7 +248,8 @@ function SummaryCard() {
     summary.lost < 1 &&
     summary.retried < 1 &&
     summary.timedOut < 1 &&
-    summary.shortCircuited < 1;
+    summary.shortCircuited < 1 &&
+    summary.throttled < 1;
 
   return (
     <div className="absolute top-28 right-4 z-20 flex max-h-[calc(100%-8rem)] w-80 flex-col overflow-y-auto rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur-sm">
@@ -311,9 +325,15 @@ function SummaryCard() {
         />
         {summary.shortCircuited >= 1 && (
           <Stat
-            wide
             label="Short-circuited"
             value={formatRateCompact(summary.shortCircuited)}
+            className="text-amber-600 dark:text-amber-400"
+          />
+        )}
+        {summary.throttled >= 1 && (
+          <Stat
+            label="Rate limited"
+            value={formatRateCompact(summary.throttled)}
             className="text-amber-600 dark:text-amber-400"
           />
         )}
@@ -347,9 +367,16 @@ function SummaryCard() {
           loaded the target.
         </p>
       )}
+      {summary.throttled >= 1 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Rate limiters rejected {formatRateCompact(summary.throttled)} requests
+          (429-style) before they used any capacity. Dropped and Lost (async)
+          include them.
+        </p>
+      )}
       {allClear && (
         <p className="mt-3 text-xs text-muted-foreground">
-          All requests completed. Nothing was dropped, timed out,
+          All requests completed. Nothing was dropped, timed out, rate limited,
           short-circuited or lost.
         </p>
       )}
@@ -380,6 +407,19 @@ function SummaryCard() {
               key={node.id}
               label={labelOf(node.id)}
               detail={rejectedDetail(node)}
+              onSelect={() => focusNode(node.id)}
+            />
+          ))}
+        </Group>
+      )}
+
+      {limiters.length > 0 && (
+        <Group title="Rate limiters">
+          {limiters.map((node) => (
+            <NodeRow
+              key={node.id}
+              label={labelOf(node.id)}
+              detail={limiterDetail(node)}
               onSelect={() => focusNode(node.id)}
             />
           ))}
