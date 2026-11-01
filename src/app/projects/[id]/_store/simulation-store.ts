@@ -1,5 +1,11 @@
 import { createStore } from "zustand/vanilla";
 import { orderGraph } from "@/lib/simulation/graph";
+import {
+  STEADY,
+  loadFactorAt,
+  normalizeProfile,
+  type LoadProfile,
+} from "@/lib/simulation/load-profile";
 import { DT, createState, step } from "@/lib/simulation/step";
 import type { Frame, SimGraph, SimState } from "@/lib/simulation/types";
 
@@ -12,11 +18,13 @@ export const RUN_LENGTH_SECONDS = 600;
 export const TICKS_PER_SECOND = Math.round(1 / DT);
 
 const RUN_LENGTH_TICKS = RUN_LENGTH_SECONDS * TICKS_PER_SECOND;
-const LOAD_FACTOR = 1;
 
 export interface SimulationState {
   status: RunStatus;
   speed: Speed;
+  // Run settings, like speed: session state that survives Reset and edits to
+  // the diagram, and is never saved with it.
+  profile: LoadProfile;
   graph: SimGraph | null;
   order: string[] | null;
   signature: string;
@@ -29,6 +37,7 @@ export interface SimulationState {
   stepOnce: () => void;
   reset: () => void;
   setSpeed: (speed: Speed) => void;
+  setProfile: (profile: LoadProfile) => void;
   advance: (ticks: number) => void;
 }
 
@@ -50,6 +59,7 @@ export function createSimulationStore() {
   return createStore<SimulationState>()((set, get) => ({
     status: "idle",
     speed: 1,
+    profile: STEADY,
     graph: null,
     order: null,
     signature: "",
@@ -88,8 +98,9 @@ export function createSimulationStore() {
     },
     reset: () => set({ status: "idle", ...fresh() }),
     setSpeed: (speed) => set({ speed }),
+    setProfile: (profile) => set({ profile: normalizeProfile(profile) }),
     advance: (ticks) => {
-      const { graph, order, status } = get();
+      const { graph, order, status, profile } = get();
       if (!graph || !order || status === "finished") return;
 
       let sim = get().sim;
@@ -98,7 +109,8 @@ export function createSimulationStore() {
       const recorded: Frame[] = [];
 
       for (let i = 0; i < ticks; i++) {
-        const result = step(graph, order, sim, LOAD_FACTOR);
+        const load = loadFactorAt(profile, sim.tick);
+        const result = step(graph, order, sim, load);
         sim = result.state;
         frame = result.frame;
         if (sim.tick % TICKS_PER_SECOND === 0) recorded.push(frame);
