@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { RotateCcw, SkipForward } from "lucide-react";
+import { PowerOff, RotateCcw, SkipForward } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -53,9 +53,11 @@ export function RunControls() {
   const seconds = useSimulationStore((s) =>
     Math.floor(s.sim.tick / TICKS_PER_SECOND),
   );
+  const downCount = useSimulationStore((s) => s.down.size);
   const stepOnce = useSimulationStore((s) => s.stepOnce);
   const reset = useSimulationStore((s) => s.reset);
   const setSpeed = useSimulationStore((s) => s.setSpeed);
+  const reviveAll = useSimulationStore((s) => s.reviveAll);
 
   if (!runnable) return null;
 
@@ -90,6 +92,22 @@ export function RunControls() {
       </div>
       <div className="mx-1 h-4 w-px bg-border" />
       <LoadControl />
+      {downCount > 0 && (
+        <>
+          <div className="mx-1 h-4 w-px bg-border" />
+          <Tooltip>
+            <TooltipTrigger
+              onClick={reviveAll}
+              className="flex h-7 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10">
+              <PowerOff size={13} />
+              {downCount} down
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Revive all killed nodes
+            </TooltipContent>
+          </Tooltip>
+        </>
+      )}
       <div className="mx-1 h-4 w-px bg-border" />
       <span className="px-1.5 font-mono text-xs text-muted-foreground tabular-nums">
         {formatClock(seconds)}
