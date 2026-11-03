@@ -68,7 +68,11 @@ function rejectedDetail(node: NodeSummary) {
     node.limited >= 1
       ? ` ${formatRateCompact(node.limited)} were rate limited.`
       : "";
-  return `Rejected ${formatRateCompact(node.refused)} requests${from}${saturated}.${retries}${timeouts}${limited}`;
+  const down =
+    node.unavailable >= 1
+      ? ` ${formatRateCompact(node.unavailable)} were refused while down.`
+      : "";
+  return `Rejected ${formatRateCompact(node.refused)} requests${from}${saturated}.${retries}${timeouts}${limited}${down}`;
 }
 
 function limiterDetail(node: NodeSummary) {
@@ -79,6 +83,15 @@ function limiterDetail(node: NodeSummary) {
   if (node.firstLimitedAt !== null) {
     parts.push(`from ${formatClock(node.firstLimitedAt)}`);
   }
+  return parts.join(" · ");
+}
+
+function outageDetail(node: NodeSummary) {
+  const parts = [`down ${formatClock(node.downSeconds)}`];
+  if (node.firstDownAt !== null) {
+    parts.push(`from ${formatClock(node.firstDownAt)}`);
+  }
+  parts.push(`${formatRateCompact(node.unavailable)} refused`);
   return parts.join(" · ");
 }
 
@@ -244,6 +257,10 @@ function SummaryCard() {
     .filter((node) => node.limited >= 1)
     .sort((a, b) => b.limited - a.limited || a.id.localeCompare(b.id))
     .slice(0, MAX_LISTED);
+  const outages = summary.nodes
+    .filter((node) => node.downSeconds > 0)
+    .sort((a, b) => b.downSeconds - a.downSeconds || a.id.localeCompare(b.id))
+    .slice(0, MAX_LISTED);
   const retryEdges = summary.retryEdges.slice(0, MAX_LISTED);
   const breakers = summary.breakers.slice(0, MAX_LISTED);
   const trips = summary.breakers.reduce((sum, b) => sum + b.trips, 0);
@@ -262,7 +279,8 @@ function SummaryCard() {
     summary.retried < 1 &&
     summary.timedOut < 1 &&
     summary.shortCircuited < 1 &&
-    summary.throttled < 1;
+    summary.throttled < 1 &&
+    summary.unavailable < 1;
 
   return (
     <div
@@ -354,6 +372,13 @@ function SummaryCard() {
             className="text-amber-600 dark:text-amber-400"
           />
         )}
+        {summary.unavailable >= 1 && (
+          <Stat
+            label="Refused (down)"
+            value={formatRateCompact(summary.unavailable)}
+            className="text-destructive"
+          />
+        )}
       </div>
 
       {summary.firstFailureAt !== null && (
@@ -391,10 +416,17 @@ function SummaryCard() {
           include them.
         </p>
       )}
+      {summary.unavailable >= 1 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Killed nodes refused {formatRateCompact(summary.unavailable)} requests
+          (connection refused) while down. Dropped and Lost (async) include
+          them.
+        </p>
+      )}
       {allClear && (
         <p className="mt-3 text-xs text-muted-foreground">
           All requests completed. Nothing was dropped, timed out, rate limited,
-          short-circuited or lost.
+          short-circuited, refused or lost.
         </p>
       )}
 
@@ -424,6 +456,19 @@ function SummaryCard() {
               key={node.id}
               label={labelOf(node.id)}
               detail={rejectedDetail(node)}
+              onSelect={() => focusNode(node.id)}
+            />
+          ))}
+        </Group>
+      )}
+
+      {outages.length > 0 && (
+        <Group title="Outages">
+          {outages.map((node) => (
+            <NodeRow
+              key={node.id}
+              label={labelOf(node.id)}
+              detail={outageDetail(node)}
               onSelect={() => focusNode(node.id)}
             />
           ))}
