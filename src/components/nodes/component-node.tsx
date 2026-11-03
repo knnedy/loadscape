@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
+import { PowerOff } from "lucide-react";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import {
   componentCatalog,
@@ -12,6 +13,7 @@ import { formatRate, formatRateCompact } from "@/lib/simulation/capacity";
 import { presetFor } from "@/lib/simulation/catalog-presets";
 import { PRESETS } from "@/lib/simulation/presets";
 import type { NodeFrame } from "@/lib/simulation/types";
+import { useNodeDown } from "@/app/projects/[id]/_hooks/use-node-fault";
 import { useThrottledSimulation } from "@/app/projects/[id]/_hooks/use-throttled-simulation";
 import { useTopologyStore } from "@/app/projects/[id]/_store/topology-provider";
 import { Icon as IconifyIcon } from "@iconify/react";
@@ -20,10 +22,11 @@ type ComponentNodeType = Node<TopologyNodeData, "component">;
 
 const RATE_THRESHOLD = 0.5;
 
-// `dropped` includes what the rate limiter turned away, which is policy
-// working and not overload, so the two are shown separately.
+// `dropped` includes what the rate limiter turned away and what a killed node
+// refused. Those are policy and fault injection, not overload, so they are
+// shown on their own rows.
 function overloadDrops(frame: NodeFrame) {
-  return Math.max(0, frame.dropped - frame.limited);
+  return Math.max(0, frame.dropped - frame.limited - frame.unavailable);
 }
 
 // Timeouts fail the callers of a service, so they count as shedding there.
@@ -80,6 +83,7 @@ function Gauge({ frame, isQueue }: { frame: NodeFrame; isQueue: boolean }) {
   const dropping = drops >= RATE_THRESHOLD;
   const limiting = frame.limited >= RATE_THRESHOLD;
   const expiring = frame.timedOut >= RATE_THRESHOLD;
+  const refusing = frame.unavailable >= RATE_THRESHOLD;
 
   return (
     <div className="flex flex-col gap-1">
@@ -97,6 +101,13 @@ function Gauge({ frame, isQueue }: { frame: NodeFrame; isQueue: boolean }) {
           </span>
         )}
       </div>
+      {refusing && (
+        <Row
+          label="unavailable"
+          value={`${formatRateCompact(frame.unavailable)}/s`}
+          tone="destructive"
+        />
+      )}
       {limiting && (
         <Row
           label="rate limited"
@@ -142,7 +153,8 @@ export function ComponentNode({
 
   const frame =
     useThrottledSimulation((s) => s.frame?.nodes[id] ?? null) ?? null;
-  const shedding = frame !== null && sheds(frame, isQueue);
+  const down = useNodeDown(id);
+  const shedding = !down && frame !== null && sheds(frame, isQueue);
 
   const renameNode = useTopologyStore((s) => s.renameNode);
   const readOnly = useTopologyStore((s) => s.readOnly);
@@ -172,7 +184,7 @@ export function ComponentNode({
   }
 
   const handleStyle = {
-    background: catColor,
+    background: down ? "var(--destructive)" : catColor,
     width: 8,
     height: 8,
     borderRadius: 2,
@@ -187,7 +199,9 @@ export function ComponentNode({
           : "gap-2 rounded-xl px-3 py-2.5"
       }`}
       style={{
-        border: `2px solid ${catColor}`,
+        border: down
+          ? "2px dashed var(--destructive)"
+          : `2px solid ${catColor}`,
         boxShadow: selected
           ? "0 0 0 3px color-mix(in oklch, var(--primary) 45%, transparent)"
           : shedding
@@ -196,6 +210,13 @@ export function ComponentNode({
         width: isCapsule ? undefined : 160,
         minWidth: isCapsule ? 110 : undefined,
       }}>
+      {down && (
+        <span className="pointer-events-none absolute -top-2.5 right-3 flex items-center gap-1 rounded-md border border-destructive/40 bg-card px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-destructive uppercase shadow-sm">
+          <PowerOff size={10} />
+          down
+        </span>
+      )}
+
       <Handle
         id="in"
         type="target"
@@ -230,7 +251,9 @@ export function ComponentNode({
               e.stopPropagation();
               if (!readOnly) startEditing();
             }}
-            className="truncate text-[13px] leading-tight font-medium text-foreground">
+            className={`truncate text-[13px] leading-tight font-medium ${
+              down ? "text-muted-foreground" : "text-foreground"
+            }`}>
             {data.label}
           </span>
         )}
