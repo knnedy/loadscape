@@ -25,6 +25,9 @@ export interface SimulationState {
   // Run settings, like speed: session state that survives Reset and edits to
   // the diagram, and is never saved with it.
   profile: LoadProfile;
+  // Ids of killed nodes. Replaced, never mutated, so selectors can compare
+  // by reference.
+  down: ReadonlySet<string>;
   graph: SimGraph | null;
   order: string[] | null;
   signature: string;
@@ -38,6 +41,10 @@ export interface SimulationState {
   reset: () => void;
   setSpeed: (speed: Speed) => void;
   setProfile: (profile: LoadProfile) => void;
+  kill: (id: string) => void;
+  revive: (id: string) => void;
+  toggleDown: (id: string) => void;
+  reviveAll: () => void;
   advance: (ticks: number) => void;
 }
 
@@ -60,6 +67,7 @@ export function createSimulationStore() {
     status: "idle",
     speed: 1,
     profile: STEADY,
+    down: new Set<string>(),
     graph: null,
     order: null,
     signature: "",
@@ -70,12 +78,22 @@ export function createSimulationStore() {
         set({ graph });
         return;
       }
+
+      // A fault belongs to a node that still exists, so a deleted node's
+      // fault goes with it.
+      const killable = new Set(
+        graph.nodes.filter((node) => node.role !== "source").map((n) => n.id),
+      );
+      const previous = get().down;
+      const kept = [...previous].filter((id) => killable.has(id));
+
       const ordered = orderGraph(graph);
       const { status } = get();
       const inProgress = status === "running" || status === "paused";
       set({
         graph,
         signature,
+        down: kept.length === previous.size ? previous : new Set(kept),
         order: ordered.ok ? ordered.order : null,
         status: ordered.ok && inProgress ? status : "idle",
         ...fresh(),
@@ -99,8 +117,29 @@ export function createSimulationStore() {
     reset: () => set({ status: "idle", ...fresh() }),
     setSpeed: (speed) => set({ speed }),
     setProfile: (profile) => set({ profile: normalizeProfile(profile) }),
+    kill: (id) => {
+      const { graph, down } = get();
+      const node = graph?.nodes.find((candidate) => candidate.id === id);
+      if (!node || node.role === "source" || down.has(id)) return;
+      set({ down: new Set(down).add(id) });
+    },
+    revive: (id) => {
+      const { down } = get();
+      if (!down.has(id)) return;
+      const next = new Set(down);
+      next.delete(id);
+      set({ down: next });
+    },
+    toggleDown: (id) => {
+      if (get().down.has(id)) get().revive(id);
+      else get().kill(id);
+    },
+    reviveAll: () => {
+      if (get().down.size === 0) return;
+      set({ down: new Set<string>() });
+    },
     advance: (ticks) => {
-      const { graph, order, status, profile } = get();
+      const { graph, order, status, profile, down } = get();
       if (!graph || !order || status === "finished") return;
 
       let sim = get().sim;
@@ -110,7 +149,7 @@ export function createSimulationStore() {
 
       for (let i = 0; i < ticks; i++) {
         const load = loadFactorAt(profile, sim.tick);
-        const result = step(graph, order, sim, load);
+        const result = step(graph, order, sim, load, down);
         sim = result.state;
         frame = result.frame;
         if (sim.tick % TICKS_PER_SECOND === 0) recorded.push(frame);
