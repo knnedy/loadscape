@@ -8,7 +8,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { Check, Copy, Trash2 } from "lucide-react";
+import { Check, Copy, PowerOff, Trash2 } from "lucide-react";
 import { groupColorPalette } from "@/lib/catalog/group-colors";
 import {
   capacityOverride,
@@ -23,6 +23,7 @@ import type {
   TopologyNodeData,
 } from "@/lib/types/topology";
 import { cn } from "@/lib/utils";
+import { useNodeFault } from "../../_hooks/use-node-fault";
 import { formatKey } from "../../_lib/shortcuts";
 import { useTopologyStore } from "../../_store/topology-provider";
 
@@ -222,6 +223,7 @@ function NodeMenuItems({ id, onClose }: { id: string; onClose: () => void }) {
   const updateNodeConfig = useTopologyStore((s) => s.updateNodeConfig);
   const updateGroupColor = useTopologyStore((s) => s.updateGroupColor);
   const updateNoteColor = useTopologyStore((s) => s.updateNoteColor);
+  const fault = useNodeFault(id);
 
   if (!node) return null;
 
@@ -257,6 +259,18 @@ function NodeMenuItems({ id, onClose }: { id: string; onClose: () => void }) {
           shortcut={["mod", "D"]}
           onSelect={run(() => duplicateNode(id))}
         />
+        {fault.available && (
+          <>
+            <Divider />
+            <Heading>Fault injection</Heading>
+            <Item
+              destructive={!fault.down}
+              icon={<PowerOff />}
+              label={fault.down ? "Revive node" : "Kill node"}
+              onSelect={run(fault.toggle)}
+            />
+          </>
+        )}
         {limits && (
           <>
             <Divider />
