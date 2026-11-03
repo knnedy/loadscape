@@ -15,9 +15,12 @@ export interface NodeSummary {
   refused: number;
   refusedRetries: number;
   limited: number;
+  unavailable: number;
   timedOut: number;
   firstRefusedAt: number | null;
   firstLimitedAt: number | null;
+  firstDownAt: number | null;
+  downSeconds: number;
   peakUtilization: number;
   saturatedSeconds: number;
   peakQueue: number;
@@ -56,6 +59,7 @@ export interface RunSummary {
   timedOut: number;
   shortCircuited: number;
   throttled: number;
+  unavailable: number;
   successRate: number;
   averageGoodput: number;
   minGoodput: number;
@@ -84,9 +88,12 @@ export function summarizeRun(
       refused: 0,
       refusedRetries: 0,
       limited: 0,
+      unavailable: 0,
       timedOut: 0,
       firstRefusedAt: null,
       firstLimitedAt: null,
+      firstDownAt: null,
+      downSeconds: 0,
       peakUtilization: 0,
       saturatedSeconds: 0,
       peakQueue: 0,
@@ -132,6 +139,7 @@ export function summarizeRun(
   let timedOut = 0;
   let shortCircuited = 0;
   let throttled = 0;
+  let unavailable = 0;
   let minGoodput = Infinity;
   let firstFailureAt: number | null = null;
 
@@ -161,6 +169,12 @@ export function summarizeRun(
       if (!node) continue;
       node.timedOut += nodeFrame.timedOut;
       node.limited += nodeFrame.limited;
+      node.unavailable += nodeFrame.unavailable;
+      unavailable += nodeFrame.unavailable;
+      if (nodeFrame.down) {
+        node.downSeconds += 1;
+        if (node.firstDownAt === null) node.firstDownAt = at;
+      }
       if (node.firstLimitedAt === null && nodeFrame.limited >= REFUSAL_FLOOR) {
         node.firstLimitedAt = at;
       }
@@ -259,6 +273,7 @@ export function summarizeRun(
     timedOut,
     shortCircuited,
     throttled,
+    unavailable,
     successRate: generated > 0 ? succeeded / generated : 1,
     averageGoodput: succeeded / history.length,
     minGoodput,
