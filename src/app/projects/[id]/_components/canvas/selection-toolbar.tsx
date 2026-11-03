@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { NodeToolbar, Position } from "@xyflow/react";
-import { Copy, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Copy, PowerOff, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +18,7 @@ import {
 } from "@/lib/simulation/capacity";
 import type { TopologyNodeData } from "@/lib/types/topology";
 import { cn } from "@/lib/utils";
+import { useNodeFault } from "../../_hooks/use-node-fault";
 import { useTopologyStore } from "../../_store/topology-provider";
 
 const buttonClass =
@@ -31,6 +32,7 @@ function ToolbarButton({
   label,
   shortcut,
   pressed,
+  pressedTone = "primary",
   destructive,
   onClick,
   children,
@@ -38,6 +40,7 @@ function ToolbarButton({
   label: string;
   shortcut?: string;
   pressed?: boolean;
+  pressedTone?: "primary" | "destructive";
   destructive?: boolean;
   onClick: () => void;
   children: ReactNode;
@@ -50,7 +53,10 @@ function ToolbarButton({
         aria-pressed={pressed}
         className={cn(
           buttonClass,
-          pressed && "bg-primary/12 text-primary",
+          pressed &&
+            (pressedTone === "destructive"
+              ? "bg-destructive/12 text-destructive"
+              : "bg-primary/12 text-primary"),
           destructive && "hover:bg-destructive/10 hover:text-destructive",
         )}>
         {children}
@@ -70,6 +76,7 @@ function NodeActions({ id }: { id: string }) {
   const deleteNode = useTopologyStore((s) => s.deleteNode);
   const updateNodeConfig = useTopologyStore((s) => s.updateNodeConfig);
   const openDetails = useTopologyStore((s) => s.openDetails);
+  const fault = useNodeFault(id);
 
   if (!node) return null;
 
@@ -123,6 +130,15 @@ function NodeActions({ id }: { id: string }) {
               onClick={openDetails}>
               <SlidersHorizontal size={14} />
             </ToolbarButton>
+            {fault.available && (
+              <ToolbarButton
+                label={fault.down ? "Revive node" : "Kill node"}
+                pressed={fault.down}
+                pressedTone="destructive"
+                onClick={fault.toggle}>
+                <PowerOff size={14} />
+              </ToolbarButton>
+            )}
           </>
         )}
 
