@@ -1,3 +1,12 @@
+import {
+  ZERO,
+  constant,
+  exponential,
+  mixture,
+  sum,
+  thin,
+  type Moments,
+} from "./latency-estimate";
 import type {
   BreakerState,
   EdgeFrame,
@@ -449,7 +458,9 @@ export function step(
   }
 
   const success = new Map<string, number>();
-  const latency = new Map<string, number>();
+  // Each node's latency from there down, as a mean and a variance.
+  const moments = new Map<string, Moments>();
+  const momentsOf = (id: string) => moments.get(id) ?? ZERO;
 
   // A call succeeds only if the breaker lets it through and the target
   // answers, and one that may be retried succeeds if any attempt does.
@@ -466,31 +477,36 @@ export function step(
 
     const edges = outgoing.get(id) ?? [];
     let calls = 1;
-    let callMs = 0;
+    let call: Moments = ZERO;
 
     if (node.fanout === "split") {
       const weight = edges.reduce((sum, edge) => sum + edge.share, 0);
       if (weight > 0) {
         calls = 0;
+        const parts: { weight: number; moments: Moments }[] = [];
         for (const edge of edges) {
           const portion = edge.share / weight;
           if (isAsync(edge)) {
             calls += portion;
+            parts.push({ weight: portion, moments: ZERO });
           } else {
             calls += portion * attemptSuccess(edge);
-            callMs += portion * gateOf(edge) * (latency.get(edge.target) ?? 0);
+            parts.push({
+              weight: portion,
+              moments: thin(momentsOf(edge.target), gateOf(edge)),
+            });
           }
         }
+        call = mixture(parts);
       }
     } else {
+      // Parallel calls take the slowest path, judged by its mean.
       for (const edge of edges) {
         if (isAsync(edge)) continue;
         calls *= 1 - edge.share + edge.share * attemptSuccess(edge);
         if (edge.share > 0) {
-          callMs = Math.max(
-            callMs,
-            gateOf(edge) * (latency.get(edge.target) ?? 0),
-          );
+          const candidate = thin(momentsOf(edge.target), gateOf(edge));
+          if (candidate.mean > call.mean) call = candidate;
         }
       }
     }
@@ -503,13 +519,17 @@ export function step(
         (node.hitRatio + (1 - node.hitRatio) * calls),
     );
 
-    // A killed node refuses at once, so it adds no latency of its own and
-    // makes no calls.
+    // A node's own delay is an exponential with the M/M/1 mean, plus the
+    // wait in its buffer, which Little's law makes close to fixed. A killed
+    // node refuses at once, so it adds no latency and makes no calls.
     const service =
       node.latencyMs / Math.max(1 - pass.utilization, MIN_HEADROOM);
     const waitMs = Math.min(pass.queue / pass.capacity, pass.maxWait) * 1000;
-    const own = node.role === "queue" || pass.down ? 0 : service + waitMs;
-    latency.set(id, own + (pass.down ? 0 : (1 - node.hitRatio) * callMs));
+    const own: Moments =
+      node.role === "queue" || pass.down
+        ? ZERO
+        : sum(exponential(service), constant(waitMs));
+    moments.set(id, sum(own, pass.down ? ZERO : thin(call, 1 - node.hitRatio)));
   }
 
   const nodeFrames: Record<string, NodeFrame> = {};
@@ -543,7 +563,8 @@ export function step(
       down: pass.down,
       queue: pass.queue,
       utilization: Math.min(1, pass.utilization),
-      latencyMs: latency.get(id) ?? 0,
+      latencyMs: momentsOf(id).mean,
+      latencyVariance: momentsOf(id).variance,
       lagSeconds:
         node.role === "queue"
           ? Math.min(pass.queue / pass.capacity, pass.maxWait)
