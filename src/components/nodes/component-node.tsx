@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { PowerOff } from "lucide-react";
 import type { TopologyNodeData } from "@/lib/types/topology";
@@ -11,6 +11,11 @@ import {
 } from "@/lib/catalog/components";
 import { formatRate, formatRateCompact } from "@/lib/simulation/capacity";
 import { presetFor } from "@/lib/simulation/catalog-presets";
+import {
+  estimateNodeLatency,
+  formatLatency,
+  latencyTitle,
+} from "@/lib/simulation/latency-display";
 import { PRESETS } from "@/lib/simulation/presets";
 import type { NodeFrame } from "@/lib/simulation/types";
 import { useNodeDown } from "@/app/projects/[id]/_hooks/use-node-fault";
@@ -85,6 +90,14 @@ function Gauge({ frame, isQueue }: { frame: NodeFrame; isQueue: boolean }) {
   const expiring = frame.timedOut >= RATE_THRESHOLD;
   const refusing = frame.unavailable >= RATE_THRESHOLD;
 
+  // Percentiles are estimated on demand from the frame's mean and variance,
+  // and only when this node's numbers change.
+  const { latencyMs, latencyVariance } = frame;
+  const estimate = useMemo(
+    () => estimateNodeLatency({ latencyMs, latencyVariance }),
+    [latencyMs, latencyVariance],
+  );
+
   return (
     <div className="flex flex-col gap-1">
       <div className="h-1 overflow-hidden rounded-full bg-muted">
@@ -101,6 +114,14 @@ function Gauge({ frame, isQueue }: { frame: NodeFrame; isQueue: boolean }) {
           </span>
         )}
       </div>
+      {estimate && (
+        <div
+          title={latencyTitle(estimate)}
+          className="flex justify-between font-mono text-[10px] text-muted-foreground">
+          <span>p50 ≈{formatLatency(estimate.p50)}</span>
+          <span>p99 ≈{formatLatency(estimate.p99)}</span>
+        </div>
+      )}
       {refusing && (
         <Row
           label="unavailable"
