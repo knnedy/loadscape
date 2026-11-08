@@ -1,3 +1,9 @@
+import {
+  estimateLatency,
+  mixture,
+  quantile,
+  type Moments,
+} from "./latency-estimate";
 import type { EdgeFrame, Frame, SimGraph } from "./types";
 
 const FAILING_SHARE = 0.02;
@@ -49,6 +55,27 @@ export interface BreakerSummary {
   shortCircuited: number;
 }
 
+// One step on the slowest path: the delay the node adds by itself, and how
+// busy it was.
+export interface LatencyHop {
+  id: string;
+  ownMs: number;
+  utilization: number;
+}
+
+// All of this is an estimate. It assumes exponential service times and
+// independent nodes, and covers every request as the model sees it,
+// including those that fail fast. The run-wide figures mix the seconds of the
+// run in proportion to the traffic each carried.
+export interface LatencySummary {
+  meanMs: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  peak: { p99: number; at: number };
+  path: LatencyHop[];
+}
+
 export interface RunSummary {
   seconds: number;
   generated: number;
@@ -64,10 +91,89 @@ export interface RunSummary {
   averageGoodput: number;
   minGoodput: number;
   firstFailureAt: number | null;
+  latency: LatencySummary | null;
   nodes: NodeSummary[];
   retryEdges: EdgeRetrySummary[];
   breakers: BreakerSummary[];
   bottleneck: { id: string; kind: "refusing" | "near-limit" } | null;
+}
+
+interface PeakSecond {
+  p99: number;
+  at: number;
+  frame: Frame;
+}
+
+// Follows the slowest synchronous callee from the slowest client, the same
+// rule the engine uses for parallel calls. Async edges, edges leaving a
+// queue and open breakers carry no latency, so they are skipped.
+function criticalPath(frame: Frame, graph: SimGraph): LatencyHop[] {
+  const roles = new Map(graph.nodes.map((node) => [node.id, node.role]));
+  const outgoing = new Map<string, typeof graph.edges>();
+  for (const edge of graph.edges) {
+    const list = outgoing.get(edge.source);
+    if (list) list.push(edge);
+    else outgoing.set(edge.source, [edge]);
+  }
+
+  let start: string | null = null;
+  let startMean = -1;
+  for (const node of graph.nodes) {
+    if (node.role !== "source") continue;
+    const mean = frame.nodes[node.id]?.latencyMs ?? 0;
+    if (mean > startMean) {
+      start = node.id;
+      startMean = mean;
+    }
+  }
+  if (start === null) return [];
+
+  const hops: LatencyHop[] = [];
+  const seen = new Set<string>([start]);
+  let current = start;
+
+  for (;;) {
+    let next: { id: string; mean: number } | null = null;
+    for (const edge of outgoing.get(current) ?? []) {
+      if (edge.mode === "async" || roles.get(current) === "queue") continue;
+      if (edge.share <= 0 || seen.has(edge.target)) continue;
+      if (frame.edges[edge.id]?.breaker === "open") continue;
+      const target = frame.nodes[edge.target];
+      if (!target) continue;
+      if (!next || target.latencyMs > next.mean) {
+        next = { id: edge.target, mean: target.latencyMs };
+      }
+    }
+    if (!next || !(next.mean > 0)) break;
+
+    seen.add(next.id);
+    const node = frame.nodes[next.id];
+    hops.push({
+      id: next.id,
+      ownMs: node.ownLatencyMs,
+      utilization: node.utilization,
+    });
+    current = next.id;
+  }
+  return hops;
+}
+
+function summarizeLatency(
+  parts: { weight: number; moments: Moments }[],
+  peak: PeakSecond | null,
+  graph: SimGraph,
+): LatencySummary | null {
+  if (!peak) return null;
+
+  const moments = mixture(parts);
+  if (!(moments.mean > 0)) return null;
+
+  return {
+    meanMs: moments.mean,
+    ...estimateLatency(moments),
+    peak: { p99: peak.p99, at: peak.at },
+    path: criticalPath(peak.frame, graph),
+  };
 }
 
 // History holds one frame per simulated second, so each frame's per-second
@@ -130,6 +236,11 @@ export function summarizeRun(
     ]),
   );
   const lastMode = new Map<string, EdgeFrame["breaker"]>();
+  const sources = graph.nodes
+    .filter((node) => node.role === "source")
+    .map((node) => node.id);
+  const latencyParts: { weight: number; moments: Moments }[] = [];
+  let peak: PeakSecond | null = null;
 
   let generated = 0;
   let succeeded = 0;
@@ -162,6 +273,27 @@ export function summarizeRun(
       totals.goodput < totals.generated * (1 - FAILING_SHARE)
     ) {
       firstFailureAt = at;
+    }
+
+    // End-to-end latency is what the clients see, mixed by how much each
+    // one sent this second.
+    const parts = sources
+      .map((id) => ({
+        weight: frame.nodes[id]?.offered ?? 0,
+        moments: {
+          mean: frame.nodes[id]?.latencyMs ?? 0,
+          variance: frame.nodes[id]?.latencyVariance ?? 0,
+        },
+      }))
+      .filter((part) => part.weight > 0);
+    const weight = parts.reduce((sum, part) => sum + part.weight, 0);
+    if (weight > 0) {
+      const moments = mixture(parts);
+      latencyParts.push({ weight, moments });
+      if (moments.mean > 0) {
+        const p99 = quantile(moments, 0.99);
+        if (!peak || p99 > peak.p99) peak = { p99, at, frame };
+      }
     }
 
     for (const [id, nodeFrame] of Object.entries(frame.nodes)) {
@@ -278,6 +410,7 @@ export function summarizeRun(
     averageGoodput: succeeded / history.length,
     minGoodput,
     firstFailureAt,
+    latency: summarizeLatency(latencyParts, peak, graph),
     nodes: ranked,
     retryEdges,
     breakers: trippedBreakers,
