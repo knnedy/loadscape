@@ -3,9 +3,11 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { formatRateCompact } from "@/lib/simulation/capacity";
+import { formatLatency } from "@/lib/simulation/latency-display";
 import {
   summarizeRun,
   type BreakerSummary,
+  type LatencyHop,
   type NodeSummary,
 } from "@/lib/simulation/summary";
 import type { Frame } from "@/lib/simulation/types";
@@ -117,6 +119,15 @@ function breakerDetail(breaker: BreakerSummary) {
     parts.push(`half-open ${formatClock(breaker.halfOpenSeconds)}`);
   }
   parts.push(`${formatRateCompact(breaker.shortCircuited)} short-circuited`);
+  return parts.join(" · ");
+}
+
+function hopDetail(hop: LatencyHop, slowest: boolean) {
+  const parts = [
+    `${formatLatency(hop.ownMs)} here`,
+    `${Math.round(hop.utilization * 100)}% utilized`,
+  ];
+  if (slowest) parts.push("slowest hop");
   return parts.join(" · ");
 }
 
@@ -272,6 +283,11 @@ function SummaryCard() {
     .filter((node) => node.isQueue)
     .reduce((sum, node) => sum + node.timedOut, 0);
   const failingTimeouts = Math.max(0, summary.timedOut - silentTimeouts);
+  const latency = summary.latency;
+  const slowestHop = latency?.path.reduce<LatencyHop | null>(
+    (best, hop) => (!best || hop.ownMs > best.ownMs ? hop : best),
+    null,
+  );
   const allClear =
     !summary.bottleneck &&
     summary.successRate === 1 &&
@@ -381,6 +397,23 @@ function SummaryCard() {
         )}
       </div>
 
+      {latency && (
+        <div className="mt-4">
+          <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+            End-to-end latency (est.)
+          </p>
+          <div className="mt-1.5 grid grid-cols-3 gap-2">
+            <Stat label="p50" value={`≈${formatLatency(latency.p50)}`} />
+            <Stat label="p95" value={`≈${formatLatency(latency.p95)}`} />
+            <Stat label="p99" value={`≈${formatLatency(latency.p99)}`} />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Peak p99 ≈{formatLatency(latency.peak.p99)} at{" "}
+            {formatClock(latency.peak.at)}.
+          </p>
+        </div>
+      )}
+
       {summary.firstFailureAt !== null && (
         <p className="mt-3 text-xs text-muted-foreground">
           Failure onset: more than 2% of requests failing from{" "}
@@ -462,6 +495,19 @@ function SummaryCard() {
         </Group>
       )}
 
+      {latency && latency.path.length > 0 && (
+        <Group title="Critical path at peak p99">
+          {latency.path.map((hop) => (
+            <NodeRow
+              key={hop.id}
+              label={labelOf(hop.id)}
+              detail={hopDetail(hop, hop === slowestHop)}
+              onSelect={() => focusNode(hop.id)}
+            />
+          ))}
+        </Group>
+      )}
+
       {outages.length > 0 && (
         <Group title="Outages">
           {outages.map((node) => (
@@ -529,7 +575,8 @@ function SummaryCard() {
 
       <p className="mt-4 text-[11px] text-muted-foreground">
         Illustrative only. Capacities are assumptions: read this as the shape of
-        a failure, not a forecast.
+        a failure, not a forecast. Latency percentiles are estimates that assume
+        exponential service times and independent nodes.
       </p>
     </div>
   );
