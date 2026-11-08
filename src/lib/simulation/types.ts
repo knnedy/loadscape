@@ -78,12 +78,14 @@ export interface SimState {
 
 // `latencyMs` is the mean latency from this node down, in milliseconds, and
 // `latencyVariance` is its variance in milliseconds squared. Together they
-// are what percentile estimates are built from. `limited` is the rate of
-// requests this node's rate limiter turned away. It is part of `dropped`.
-// `timedOut` is the rate of requests that gave up waiting in this node's
-// line; they were admitted earlier, so they are not part of `dropped`.
-// `down` is true while the node is killed, and `unavailable` is the rate of
-// requests it refused for that reason, which is also part of `dropped`.
+// are what percentile estimates are built from. `ownLatencyMs` is the mean
+// delay this node adds by itself, service time and buffer wait, without the
+// calls it makes. `limited` is the rate of requests this node's rate limiter
+// turned away. It is part of `dropped`. `timedOut` is the rate of requests
+// that gave up waiting in this node's line; they were admitted earlier, so
+// they are not part of `dropped`. `down` is true while the node is killed,
+// and `unavailable` is the rate of requests it refused for that reason,
+// which is also part of `dropped`.
 export interface NodeFrame {
   offered: number;
   admitted: number;
@@ -97,6 +99,7 @@ export interface NodeFrame {
   utilization: number;
   latencyMs: number;
   latencyVariance: number;
+  ownLatencyMs: number;
   lagSeconds: number;
 }
 
