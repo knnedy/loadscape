@@ -458,8 +458,10 @@ export function step(
   }
 
   const success = new Map<string, number>();
-  // Each node's latency from there down, as a mean and a variance.
+  // Each node's latency from there down, as a mean and a variance, and the
+  // mean delay the node adds by itself.
   const moments = new Map<string, Moments>();
+  const owns = new Map<string, number>();
   const momentsOf = (id: string) => moments.get(id) ?? ZERO;
 
   // A call succeeds only if the breaker lets it through and the target
@@ -529,6 +531,7 @@ export function step(
       node.role === "queue" || pass.down
         ? ZERO
         : sum(exponential(service), constant(waitMs));
+    owns.set(id, own.mean);
     moments.set(id, sum(own, pass.down ? ZERO : thin(call, 1 - node.hitRatio)));
   }
 
@@ -565,6 +568,7 @@ export function step(
       utilization: Math.min(1, pass.utilization),
       latencyMs: momentsOf(id).mean,
       latencyVariance: momentsOf(id).variance,
+      ownLatencyMs: owns.get(id) ?? 0,
       lagSeconds:
         node.role === "queue"
           ? Math.min(pass.queue / pass.capacity, pass.maxWait)
