@@ -5,6 +5,7 @@ import {
   mixture,
   sum,
   thin,
+  withRetries,
   type Moments,
 } from "./latency-estimate";
 import type {
@@ -471,6 +472,21 @@ export function step(
     return edge.retries > 0 ? 1 - (1 - single) ** (1 + edge.retries) : single;
   };
 
+  // The latency of one call over an edge: an attempt, and for a call that may
+  // be retried, the waits before the attempts that follow a failure. The
+  // waits are the whole-tick delays the engine really schedules.
+  const callMoments = (edge: SimEdge): Moments => {
+    const attempt = thin(momentsOf(edge.target), gateOf(edge));
+    if (edge.retries <= 0) return attempt;
+
+    const single = gateOf(edge) * (success.get(edge.target) ?? 1);
+    const delays = Array.from(
+      { length: edge.retries },
+      (_, i) => retryDelayTicks(edge.backoffMs, i + 1) * DT * 1000,
+    );
+    return withRetries(attempt, 1 - single, delays);
+  };
+
   for (let i = order.length - 1; i >= 0; i--) {
     const id = order[i];
     const node = nodes.get(id);
@@ -493,10 +509,7 @@ export function step(
             parts.push({ weight: portion, moments: ZERO });
           } else {
             calls += portion * attemptSuccess(edge);
-            parts.push({
-              weight: portion,
-              moments: thin(momentsOf(edge.target), gateOf(edge)),
-            });
+            parts.push({ weight: portion, moments: callMoments(edge) });
           }
         }
         call = mixture(parts);
@@ -507,7 +520,7 @@ export function step(
         if (isAsync(edge)) continue;
         calls *= 1 - edge.share + edge.share * attemptSuccess(edge);
         if (edge.share > 0) {
-          const candidate = thin(momentsOf(edge.target), gateOf(edge));
+          const candidate = callMoments(edge);
           if (candidate.mean > call.mean) call = candidate;
         }
       }
