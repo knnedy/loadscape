@@ -44,6 +44,11 @@ export function sum(a: Moments, b: Moments): Moments {
   return { mean: a.mean + b.mean, variance: a.variance + b.variance };
 }
 
+// The same independent step done `count` times in a row.
+export function repeat(moments: Moments, count: number): Moments {
+  return { mean: moments.mean * count, variance: moments.variance * count };
+}
+
 // With the given probability the latency is `moments`, and otherwise it is 0:
 // a cache hit that never reaches the next hop, for example.
 export function thin(moments: Moments, probability: number): Moments {
@@ -69,6 +74,41 @@ export function mixture(
     second += share * (moments.variance + moments.mean ** 2);
   }
   return { mean, variance: Math.max(0, second - mean ** 2) };
+}
+
+// The latency of a call that may be retried. Every attempt takes `attempt`
+// and fails with probability `failShare`; a failed attempt is followed by a
+// fixed wait before the next one, with one retry allowed per entry in
+// `delaysMs`. The number of retries used is geometric and capped, so the call
+// is a mixture over that number: n + 1 attempts and the first n waits.
+export function withRetries(
+  attempt: Moments,
+  failShare: number,
+  delaysMs: number[],
+): Moments {
+  if (delaysMs.length === 0) return attempt;
+
+  const fail = Number.isFinite(failShare)
+    ? Math.min(1, Math.max(0, failShare))
+    : 0;
+  const parts: { weight: number; moments: Moments }[] = [];
+  let reach = 1;
+  let waited = 0;
+
+  for (let n = 0; n <= delaysMs.length; n++) {
+    const last = n === delaysMs.length;
+    const weight = last ? reach : reach * (1 - fail);
+    if (weight > 0) {
+      parts.push({
+        weight,
+        moments: sum(repeat(attempt, n + 1), constant(waited)),
+      });
+    }
+    reach *= fail;
+    if (!last) waited += Math.max(0, delaysMs[n]);
+  }
+
+  return parts.length === 1 ? parts[0].moments : mixture(parts);
 }
 
 function logGamma(x: number): number {
